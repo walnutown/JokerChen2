@@ -21,14 +21,14 @@
 #include "util/printf.h"
 #include "fs/stat.h"
 #include "util/debug.h"
-
+ 
 /* To read a file:
  *      o fget(fd)
  *      o call its virtual read f_op
  *      o update f_pos
  *      o fput() it
  *      o return the number of bytes read, or an error
- *
+ * 
  * Error cases you must handle for this function at the VFS level:
  *      o EBADF
  *        fd is not a valid file descriptor or is not open for reading.

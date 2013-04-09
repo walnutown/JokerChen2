@@ -10,11 +10,13 @@ typedef signed short       int16_t;
 typedef unsigned short     uint16_t;
 typedef signed int         int32_t;
 typedef unsigned int       uint32_t;
+
 #if defined(__i386__)
 typedef signed long long   int64_t;
 typedef unsigned long long uint64_t;
 typedef signed int         intptr_t;
 typedef unsigned int       uintptr_t;
+
 #elif defined(__x86_64__) || defined(__ia64__)
 typedef signed long        int64_t;
 typedef unsigned long      uint64_t;

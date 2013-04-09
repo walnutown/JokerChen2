@@ -2,33 +2,49 @@
 #include "globals.h"
 #include "types.h"
 #include "errno.h"
-
+    
 #include "util/string.h"
 #include "util/printf.h"
 #include "util/debug.h"
-
+   
 #include "fs/dirent.h"
 #include "fs/fcntl.h"
 #include "fs/stat.h"
 #include "fs/vfs.h"
 #include "fs/vnode.h"
 
+
 /* This takes a base 'dir', a 'name', its 'len', and a result vnode.
  * Most of the work should be done by the vnode's implementation
  * specific lookup() function, but you may want to special case
  * "." and/or ".." here depnding on your implementation.
- *
+ * 
  * If dir has no lookup(), return -ENOTDIR.
- *
+ * 
  * Note: returns with the vnode refcount on *result incremented.
  */
 int
 lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result)
 {
+        if(dir->vn_ops->lookup()==NULL)
+        {
+            return -ENOTDIR;
+        }
+        else
+        {
+            // if(name_match(name,".",1))
+            // {
+            //     return dir->vn_ops->lookup(dir,curproc->p_cwd->,len,result);
+            // }
+            // else if(name_match(name,"..",2))
+            // {
+            //     return dir->vn_ops->lookup(dir,curproc->p_cwd->,len,result);
+            // }
+            return dir->vn_ops->lookup(dir,name,len,result);
+        }
         NOT_YET_IMPLEMENTED("VFS: lookup");
         return 0;
 }
-
 
 /* When successful this function returns data in the following "out"-arguments:
  *  o res_vnode: the vnode of the parent directory of "name"
@@ -52,8 +68,40 @@ int
 dir_namev(const char *pathname, size_t *namelen, const char **name,
           vnode_t *base, vnode_t **res_vnode)
 {
-        NOT_YET_IMPLEMENTED("VFS: dir_namev");
-        return 0;
+        int err=0;
+        base=base==NULL?curproc->p_cwd:base;
+        base=pathname[0]=='/'?vfs_root_vn:base;
+        int last=pathname[0]=='/'?1:0;
+        do
+        {
+            while(pathname[i++]!='/')
+            {
+                if(pathname[i]=='\0')
+                {
+                    res_vnode=*base;
+                    namelen=i-last;
+                    name=&pathname[last];
+                    return 0;
+                }
+            }
+
+            if(pathname[i]!='\0')
+            {
+                if(err=lookup(base,pathname[last],i-last-1,res_vnode))
+                    return err;
+                last=i;
+                base=*res_vnode;
+            }
+            else
+            {
+                res_vnode=*base;
+                namelen=0;
+                name=NULL;
+                return 0;
+            }
+        }while(1)
+        //NOT_YET_IMPLEMENTED("VFS: dir_namev");
+        //return 0;
 }
 
 /* This returns in res_vnode the vnode requested by the other parameters.
@@ -67,8 +115,17 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
 int
 open_namev(const char *pathname, int flag, vnode_t **res_vnode, vnode_t *base)
 {
-        NOT_YET_IMPLEMENTED("VFS: open_namev");
-        return 0;
+        size_t len;
+        char *name;
+        int err=0;
+        err=dir_namev(pathname,&len,&name,base,res_vnode);
+        if(!err)
+        {
+            err=lookup(*res_vnode,name,len,res_vnode);
+        }
+        return err;
+        //NOT_YET_IMPLEMENTED("VFS: open_namev");
+        //return 0;
 }
 
 #ifdef __GETCWD__
