@@ -454,8 +454,14 @@ int
 do_rename(const char *oldname, const char *newname)
 {
         
-        // NOT_YET_IMPLEMENTED("VFS: do_rename");
-        //return -1;
+         NOT_YET_IMPLEMENTED("VFS: do_rename");
+
+         /* link newname to oldname */
+         int error;
+         if ( (error = do_link(oldname, newname)) != 0)
+                return error;
+         /* unlink oldname */
+        return do_unlink(oldname);
 }
 
 /* Make the named directory the current process's cwd (current working
