@@ -263,14 +263,21 @@ do_mkdir(const char *path)
 {
         size_t namelen;
         const char *name;
+        vnode_t *parent_vnode;
         vnode_t *res_vnode;
-        // Use dir_namev() to find the vnode
-        if(dir_namev(pathname, &namelen, &name, NULL, &res_vnode) != 0) {
-                return ENOENT;
-        }
-        
+        int err;
+        // use dir_namev() to find the vnode
+        // err includeing, ENOENT, ENOTDIR, ENAMETOOLONG
+        if(err = dir_namev(path, &namelen, &name, NULL, &parent_vnode) != 0)
+                return err;
+        // use lookup() to make sure it doesn't already exist.
+        if(lookup(parent_vnode, name, namelen, &res_vnode) == 0)
+                return EEXIST;
+        // call the dir's mkdir vn_ops. Return what it returns.
+        err = parent_vnode -> vn_ops -> mkdir(parent_vnode, name, namelen);
+        return err;
         // NOT_YET_IMPLEMENTED("VFS: do_mkdir");
-        return -1;
+        // return -1;
 }
 
 /* Use dir_namev() to find the vnode of the directory containing the dir to be
