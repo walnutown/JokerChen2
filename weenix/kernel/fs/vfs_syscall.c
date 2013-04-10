@@ -233,7 +233,15 @@ do_mknod(const char *path, int mode, unsigned devid)
 int
 do_mkdir(const char *path)
 {
-        NOT_YET_IMPLEMENTED("VFS: do_mkdir");
+        size_t namelen;
+        const char *name;
+        vnode_t *res_vnode;
+        // Use dir_namev() to find the vnode
+        if(dir_namev(pathname, &namelen, &name, NULL, &res_vnode) != 0) {
+                return ENOENT;
+        }
+        
+        // NOT_YET_IMPLEMENTED("VFS: do_mkdir");
         return -1;
 }
 
