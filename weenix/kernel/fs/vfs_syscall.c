@@ -481,7 +481,18 @@ do_rename(const char *oldname, const char *newname)
 int
 do_chdir(const char *path)
 {
+        // Get the current process's cwd
+        vnode_t *old_cwd = curproc -> p_cwd;
+        // Down the refcount to the old cwd
+        vput(old_cwd);
 
+        vnode_t *new_cwd;
+        int err;
+        // Up the refcount!? flag!? Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG
+        if((err = open_namev(path, 0, &new_cwd, NULL) != 0)
+            return err;
+        curproc -> p_cwd = new_cwd;
+        return 0;
         // NOT_YET_IMPLEMENTED("VFS: do_chdir");
         // return -1;
 }
