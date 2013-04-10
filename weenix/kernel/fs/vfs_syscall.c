@@ -266,18 +266,18 @@ do_mkdir(const char *path)
 {
         size_t namelen;
         const char *name;
-        vnode_t *parent_vnode;
+        vnode_t *dir_vnode;
         vnode_t *res_vnode;
         int err;
-        // use dir_namev() to find the vnode
-        // err includeing, ENOENT, ENOTDIR, ENAMETOOLONG
-        if((err = dir_namev(path, &namelen, &name, NULL, &parent_vnode) != 0)
+        // Use dir_namev() to find the vnode
+        // Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG
+        if((err = dir_namev(path, &namelen, &name, NULL, &dir_vnode) != 0)
                 return err;
-        // use lookup() to make sure it doesn't already exist.
-        if(lookup(parent_vnode, name, namelen, &res_vnode) == 0)
+        // Use lookup() to make sure it doesn't already exist.
+        if(lookup(dir_vnode, name, namelen, &res_vnode) == 0)
                 return EEXIST;
-        // call the dir's mkdir vn_ops. Return what it returns.
-        err = parent_vnode -> vn_ops -> mkdir(parent_vnode, name, namelen);
+        // Call the dir's mkdir vn_ops. Return what it returns.
+        err = dir_vnode -> vn_ops -> mkdir(dir_vnode, name, namelen);
         return err;
         // NOT_YET_IMPLEMENTED("VFS: do_mkdir");
         // return -1;
@@ -306,14 +306,25 @@ do_rmdir(const char *path)
 {
         size_t namelen;
         const char *name;
-        vnode_t *parent_vnode;
+        vnode_t *dir_vnode;
         vnode_t *res_vnode;
-        int err;
-        // use dir_namev() to find the vnode of the directory containing the dir to be removed.
-        // err includeing, ENOENT, ENOTDIR, ENAMETOOLONG
-        if((err = dir_namev(path, &namelen, &name, NULL, &parent_vnode) != 0)
+        int err, len = 0;
+        // Check whether path has ".", ".." as its final component.
+        while(name[len++] != '\0');
+        len -= 2;
+        if(name[len] == '.')
+                if(name[--len] == '/')
+                        return EINVAL;
+                else if(name[len] == '.')
+                        if(name[--len] == '/')
+                                return ENOTEMPTY;
+        // Use dir_namev() to find the vnode of the directory containing the dir to be removed.
+        // Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG
+        if((err = dir_namev(path, &namelen, &name, NULL, &dir_vnode) != 0)
                 return err;
-        
+        // Call the containing dir's rmdir v_op.
+        err = dir_vnode -> vn_ops -> rmdir(dir_vnode, name, namelen);
+        return err;
         // NOT_YET_IMPLEMENTED("VFS: do_rmdir");
         // return -1;
 }
