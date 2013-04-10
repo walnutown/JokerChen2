@@ -249,7 +249,11 @@ do_mknod(const char *path, int mode, unsigned devid)
                 KASSERT(S_ISDIR(result->vn_mode));
                 /* path doesn't exist */
                 if (error == -ENOENT)
-                        return dir->vn_ops->mknod(dir, name, *namelen, mode, (devid_t)devid);
+                {
+                        int ret = dir->vn_ops->mknod(dir, name, *namelen, mode, (devid_t)devid);
+                        vput(dir);
+                        return ret;
+                }
                 else 
                         return error;
         }
@@ -373,8 +377,14 @@ do_unlink(const char *path)
                 return error;
         if (!S_ISDIR(result->vn_mode))
                 return -EISDIR;
+        
+        /* reomve the result vnode from the directory*/
+        int ret = dir->vn_ops->unlink(dir, name, *namelen);
 
-        return dir->vn_ops->unlink(dir, name, *namelen);
+        vput(result);
+        vput(dir);
+
+        return ret;
 }
 
 /* To link:
@@ -400,15 +410,36 @@ do_unlink(const char *path)
 /*link sets up a hard link. it links oldvnode into dir with the
  * specified name.
  */
-
 int
 do_link(const char *from, const char *to)
 {
         NOT_YET_IMPLEMENTED("VFS: do_link");
+        /* get 'from' vnode */
+        int error;
+        vnode_t *from_vnode;
+        if ( (error = open_namev(from, 0, &from_vnode, NULL)) != 0)
+                return error;
 
+        /* get 'to' directory vnode*/
+        size_t *namelen;
+        const char *name;
+        vnode_t *to_dir;
+        if ( (error = dir_namev(to, namelen, &name, NULL, &to_dir) != 0))
+                return error;
 
+        /* check if to_vnode has already existed */
+        vnode_t *to_vnode;
+        if (lookup(to_dir, name, *namelen, &to_vnode) == 0)
+                return -EEXIST;
 
-        return -1;
+        /* call the destination dir's (to) link vn_ops */
+        int ret = dir->vn_ops->link(from_vnode, to_dir, name, *namelen);
+
+        /*  vput the vnodes returned from open_namev and dir_namev */
+        vput(from_vnode);
+        vput(to_dir);
+
+        return ret;
 }
 
 /*      o link newname to oldname
