@@ -70,10 +70,6 @@ get_empty_fd(proc_t *p)
  *        exists.
  */
 
- /* added by taohu*/
-#ifndef MAX_PATH
-#define MAX_PATH 256
-#endif
 
 int
 do_open(const char *filename, int oflags)
@@ -127,7 +123,8 @@ do_open(const char *filename, int oflags)
      * and return an error. 
      */
     vnode_t *res_vnode;
-    if(open_namev(filename, oflags, &res_vnode, NULL) == #error )  
+    int error;
+    if((error = open_namev(filename, oflags, &res_vnode, NULL)) != 0 )  
     {
         /* to do */
         {ENAMETOOLONG}
