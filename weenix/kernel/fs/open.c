@@ -70,9 +70,76 @@ get_empty_fd(proc_t *p)
  *        exists.
  */
 
+ /* added by taohu*/
+#ifndef MAX_PATH
+#define MAX_PATH 256
+#endif
+
 int
 do_open(const char *filename, int oflags)
 {
-        NOT_YET_IMPLEMENTED("VFS: do_open");
-        return -1;
+    NOT_YET_IMPLEMENTED("VFS: do_open");
+   
+    
+    if (!(oflag == O_RDONLY || oflag == O_WRONLY || oflag == O_RDWR || (oflag == O_RDONLY | O_APPEND) || (oflag == O_WRONLY | O_APPEND) || (oflag == O_RDWR | O_APPEND)))
+        return -EINVAL;
+    /*-- 1. Get the next empty file descriptor --*/
+    int fd = get_empty_fd(curproc);
+    if (fd == -EMFILE)
+        return -EMFILE;
+ 
+    /*-- 2. Call fget to get a fresh file_t --*/
+    file_t *f = fget(-1);
+    if (f == NULL)
+        return -ENOMEM;
+
+    /*-- 3. Save the file_t in curproc's file descriptor table --*/
+    KASSERT(!curproc->p_files[fd]);
+    curproc->p_files[fd] = f;
+    
+    /*-- 4. Set file_t->f_mode to OR of FMODE_(READ|WRITE|APPEND) based on oflags --*/
+    switch(oflags)
+    {
+        case O_RDONLY:
+            f->f_mode = FMODE_READ;
+            break;
+        case O_WRONLY:
+            f->f_mode = FMODE_WRITE;
+            break;
+        case O_RDWR:
+            f->f_mode = FMODE_READ | FMODE_WRITE;
+            break;
+        case (O_RDONLY | O_APPEND):
+            f->f_mode = FMODE_READ | FMODE_APPEND;
+            break;
+        case (O_WRONLY | O_APPEND):
+            f->f_mode = FMODE_WRITE | FMODE_APPEND;
+            break;
+        case (O_RDWR | O_APPEND):
+            f->f_mode = FMODE_READ | FMODE_WRITE | FMODE_APPEND;
+            break;
+        default:
+            break;      
+    }
+    
+    /* 5. Use open_namev() to get the vnode for the file_t; 
+     * if fails, remove the fd from curproc, fput the file_t
+     * and return an error. 
+     */
+    vnode_t **res_vnode;
+    if(open_namev(filename, oflags, &res_vnode, NULL) == #error )  
+    {
+        /* to do */
+        {ENAMETOOLONG}
+        {ENOENT, EISDIR, ENXIO}
+
+        curproc->p_files[fd] = NULL;
+        fput(f);
+        return 
+    }
+
+    /*-- 6. Fill in the fields of the file_t --*/
+    f->f_vnode = *res_vnode;
+    
+        return fd;
 }
