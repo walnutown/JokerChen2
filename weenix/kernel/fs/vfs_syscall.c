@@ -219,11 +219,12 @@ do_mknod(const char *path, int mode, unsigned devid)
         
         NOT_YET_IMPLEMENTED("VFS: do_mknod");
 
+        /* validate mode type */
         if (!(S_ISCHR(mode) || (S_ISBLK(mode))))
                 return -EINVAL;
-        
+        /* get directory vnode*/
         size_t *namelen;
-        char *name;
+        const char *name;
         vnode_t *dir;
         int error;
         if( (error = dir_namev(path, namelen, &name, NULL, &dir) != 0) 
@@ -232,8 +233,11 @@ do_mknod(const char *path, int mode, unsigned devid)
         vnode_t *result;
         if ((error = lookup(dir, name, *namelen, &result)) != 0)
         {
-                if (error == -ENOTDIR || dir->vn_ops->mknod == NULL)
+                /* check if result vnode is a directory vnode*/
+                if (error == -ENOTDIR || dir->vn_ops->mknod == NULL || !S_ISDIR(result->vn_mode))
                         return -ENOTDIR;
+                KASSERT(S_ISDIR(result->vn_mode));
+                /* path doesn't exist */
                 if (error == -ENOENT)
                         return dir->vn_ops->mknod(dir, name, *namelen, mode, (devid_t)devid);
                 else 
@@ -335,15 +339,21 @@ int
 do_unlink(const char *path)
 {
         NOT_YET_IMPLEMENTED("VFS: do_unlink");
-
+        /* get directory vnode*/
         size_t *namelen;
-        char *name;
+        const char *name;
         vnode_t *dir;
         int error;
-        if( (error = dir_namev(path, namelen, &name, NULL, &dir) != 0) 
+        if ((error = dir_namev(path, namelen, &name, NULL, &dir) != 0) 
                 return error;
+        /* check if path refers to a directory */
+        vnode_t *result;
+        if ((error = lookup(dir, name, *namelen, &result)) != 0)
+                return error;
+        if (!S_ISDIR(result->vn_mode))
+                return -EISDIR;
 
-        return -1;
+        return dir->vn_ops->unlink(dir, name, *namelen);
 }
 
 /* To link:
