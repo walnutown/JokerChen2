@@ -326,12 +326,13 @@ do_rmdir(const char *path)
         // Check whether path has ".", ".." as its final component.
         while(name[len++] != '\0');
         len -= 2;
-        if(name[len] == '.')
+        if(name[len] == '.') {
                 if(name[--len] == '/')
                         return EINVAL;
                 else if(name[len] == '.')
                         if(name[--len] == '/')
                                 return ENOTEMPTY;
+        }
         // Use dir_namev() to find the vnode of the directory containing the dir to be removed.
         // Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG
         if((err = dir_namev(path, &namelen, &name, NULL, &dir_vnode) != 0)
@@ -480,8 +481,9 @@ do_rename(const char *oldname, const char *newname)
 int
 do_chdir(const char *path)
 {
-        NOT_YET_IMPLEMENTED("VFS: do_chdir");
-        return -1;
+
+        // NOT_YET_IMPLEMENTED("VFS: do_chdir");
+        // return -1;
 }
 
 /* Call the readdir f_op on the given fd, filling in the given dirent_t*.
