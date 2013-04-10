@@ -126,7 +126,7 @@ do_open(const char *filename, int oflags)
      * if fails, remove the fd from curproc, fput the file_t
      * and return an error. 
      */
-    vnode_t **res_vnode;
+    vnode_t *res_vnode;
     if(open_namev(filename, oflags, &res_vnode, NULL) == #error )  
     {
         /* to do */
@@ -139,7 +139,7 @@ do_open(const char *filename, int oflags)
     }
 
     /*-- 6. Fill in the fields of the file_t --*/
-    f->f_vnode = *res_vnode;
+    f->f_vnode = res_vnode;
     
         return fd;
 }
