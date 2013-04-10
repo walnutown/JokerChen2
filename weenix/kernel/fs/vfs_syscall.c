@@ -151,7 +151,6 @@ do_dup(int fd)
         }
         curproc->p_files[new_fd]=file;
         return new_fd;
-
         //NOT_YET_IMPLEMENTED("VFS: do_dup");
         //return -1;
 }
