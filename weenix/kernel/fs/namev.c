@@ -32,14 +32,18 @@ lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result)
         }
         else
         {
-            // if(name_match(name,".",1))
-            // {
-            //     return dir->vn_ops->lookup(dir,curproc->p_cwd->,len,result);
-            // }
-            // else if(name_match(name,"..",2))
-            // {
-            //     return dir->vn_ops->lookup(dir,curproc->p_cwd->,len,result);
-            // }
+             // if(name_match(name,".",1))
+             // {
+             //    dirent_t *dit;
+             //    dir->vn_ops->readdir(dir,vn_len,dit);
+                
+             //    *result=dir;
+             //    return 0;
+             // }
+             // else if(name_match(name,"..",2))
+             // {
+             //    *result=dir->
+             // }
             return dir->vn_ops->lookup(dir,name,len,result);
         }
         NOT_YET_IMPLEMENTED("VFS: lookup");
