@@ -325,7 +325,7 @@ do_rmdir(const char *path)
         vnode_t *dir_vnode;
         vnode_t *res_vnode;
         int err, len = 0;
-        /* Check whether path has ".", ".." as its final component.*/
+        // Check whether path has ".", ".." as its final component.
         while(name[len++] != '\0');
         len -= 2;
         if(name[len] == '.') {
@@ -334,19 +334,16 @@ do_rmdir(const char *path)
                 else if(name[len] == '.')
                         if(name[--len] == '/')
                                 return ENOTEMPTY;
-<<<<<<< HEAD
         }
         // Use dir_namev() to find the vnode of the directory containing the dir to be removed.
         // Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG
-=======
-        /* Use dir_namev() to find the vnode of the directory containing the dir to be removed.*/
-        /* Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG*/
->>>>>>> vnode special read/write and syscall fix bugs
         if((err = dir_namev(path, &namelen, &name, NULL, &dir_vnode) != 0)
                 return err;
-        /* Call the containing dir's rmdir v_op.*/
+        // Call the containing dir's rmdir v_op.
         err = dir_vnode -> vn_ops -> rmdir(dir_vnode, name, namelen);
         return err;
+        // NOT_YET_IMPLEMENTED("VFS: do_rmdir");
+        // return -1;
 }
 
 /*
