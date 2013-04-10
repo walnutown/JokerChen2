@@ -209,11 +209,39 @@ do_dup2(int ofd, int nfd)
  *      o ENAMETOOLONG
  *        A component of path was too long.
  */
+/* make block or character special files 
+  * S_IFCHR: character special file
+  * S_IFBLK: block special file
+  * 
+  */
 int
 do_mknod(const char *path, int mode, unsigned devid)
 {
+        
         NOT_YET_IMPLEMENTED("VFS: do_mknod");
-        return -1;
+
+        if (!(S_ISCHR(mode) || (S_ISBLK(mode))))
+                return -EINVAL;
+        
+        size_t *namelen;
+        char *name;
+        vnode_t *dir;
+        int error;
+        if( (error = dir_namev(path, namelen, &name, NULL, &dir) != 0) 
+                return error;
+
+        vnode_t *result;
+        if ((error = lookup(dir, name, *namelen, &result)) != 0)
+        {
+                if (error == -ENOTDIR || dir->vn_ops->mknod == NULL)
+                        return -ENOTDIR;
+                if (error == -ENOENT)
+                        return dir->vn_ops->mknod(dir, name, *namelen, mode, (devid_t)devid);
+                else 
+                        return error;
+        }
+        else
+                return -EEXIST;
 }
 
 /* Use dir_namev() to find the vnode of the dir we want to make the new
