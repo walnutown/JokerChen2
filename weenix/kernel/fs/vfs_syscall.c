@@ -416,7 +416,16 @@ do_getdent(int fd, struct dirent *dirp)
                 fput(fd);
                 return -ENOTDIR;
         }
-        if()
+        if(file->f_vnode->vn_ops->readdir==NULL)
+        {
+                fput(fd);
+                return -ENOTDIR;
+        }
+        int bytes;
+        bytes=file->f_vnode->vn_ops->readdir(file->f_vnode,file->f_pos,dirp);
+        do_lseek(file,bytes,SEEK_CUR);
+        fput(fd);
+        return bytes;
         //NOT_YET_IMPLEMENTED("VFS: do_getdent");
         //return -1;
 }
@@ -482,8 +491,24 @@ do_lseek(int fd, int offset, int whence)
 int
 do_stat(const char *path, struct stat *buf)
 {
-        NOT_YET_IMPLEMENTED("VFS: do_stat");
-        return -1;
+        size_t len;
+        char *name;
+        vnode_t* par;
+        vnode_t* chd;
+        int err=0;
+        err=dir_namev(path,&len,&name,NULL,&par);
+        if(!err)
+        {
+            err=lookup(par,name,len,&chd);
+            if(!err)
+            {
+                return chd->vn_ops->stat(chd,buf);
+            }
+            return err;
+        }
+        return err;
+        // NOT_YET_IMPLEMENTED("VFS: do_stat");
+        // return -1;
 }
 
 #ifdef __MOUNTING__

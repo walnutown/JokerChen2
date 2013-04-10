@@ -26,7 +26,7 @@
 int
 lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result)
 {
-        if(dir->vn_ops->lookup()==NULL)
+        if(dir->vn_ops->lookup==NULL)
         {
             return -ENOTDIR;
         }
@@ -87,6 +87,8 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
 
             if(pathname[i]!='\0')
             {
+                if(i-last-1>STR_MAX)
+                    return -ENAMETOOLONG;
                 if(err=lookup(base,pathname[last],i-last-1,res_vnode))
                     return err;
                 last=i;
@@ -122,7 +124,7 @@ open_namev(const char *pathname, int flag, vnode_t **res_vnode, vnode_t *base)
         if(!err)
         {
             err=lookup(*res_vnode,name,len,res_vnode);
-            if(err==-ENOENT&&O_CREAT==0x100)
+            if((err==-ENOENT)&&(O_CREAT&flag))
             {
                 return *res_vnode->vn_ops->create(*res_vnode,name,len,res_vnode);
             }
