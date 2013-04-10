@@ -230,32 +230,31 @@ do_dup2(int ofd, int nfd)
 int
 do_mknod(const char *path, int mode, unsigned devid)
 {
-        
-        NOT_YET_IMPLEMENTED("VFS: do_mknod");
-
         /* validate mode type */
         if (!(S_ISCHR(mode) || (S_ISBLK(mode))))
                 return -EINVAL;
         /* get directory vnode*/
-        size_t *namelen;
+        size_t namelen;
         const char *name;
         vnode_t *dir;
         int error;
-        if( (error = dir_namev(path, namelen, &name, NULL, &dir) != 0) 
+        if((error = dir_namev(path, &namelen, &name, NULL, &dir) != 0) 
                 return error;
-
         vnode_t *result;
-        if ((error = lookup(dir, name, *namelen, &result)) != 0)
+        if ((error = lookup(dir, name, namelen, &result)) != 0)
         {
                 /* check if result vnode is a directory vnode*/
-                if (error == -ENOTDIR || dir->vn_ops->mknod == NULL || !S_ISDIR(result->vn_mode))
+                if (error == -ENOTDIR || dir->vn_ops->mknod==NULL||!S_ISDIR(dir->vn_mode))/* ?bug fixed here*/
                         return -ENOTDIR;
+
                 KASSERT(S_ISDIR(result->vn_mode));
                 /* path doesn't exist */
                 if (error == -ENOENT)
                 {
-                        int ret = dir->vn_ops->mknod(dir, name, *namelen, mode, (devid_t)devid);
-                        vput(dir);
+                        if(namelen>STR_MAX)
+                                return -ENAMETOOLONG; /*?we need to check length*/
+                        int ret = dir->vn_ops->mknod(dir, name, namelen, mode, (devid_t)devid);
+                        vput(dir);/*?*/
                         return ret;
                 }
                 else 
@@ -416,27 +415,26 @@ do_unlink(const char *path)
 int
 do_link(const char *from, const char *to)
 {
-        NOT_YET_IMPLEMENTED("VFS: do_link");
         /* get 'from' vnode */
         int error;
         vnode_t *from_vnode;
-        if ( (error = open_namev(from, 0, &from_vnode, NULL)) != 0)
+        if ((error = open_namev(from, 0, &from_vnode, NULL))!= 0) /*? flag=0*/
                 return error;
 
         /* get 'to' directory vnode*/
-        size_t *namelen;
+        size_t namelen;
         const char *name;
         vnode_t *to_dir;
-        if ( (error = dir_namev(to, namelen, &name, NULL, &to_dir) != 0))
+        if ((error = dir_namev(to, &namelen, &name, NULL, &to_dir)!= 0))
                 return error;
 
         /* check if to_vnode has already existed */
         vnode_t *to_vnode;
-        if (lookup(to_dir, name, *namelen, &to_vnode) == 0)
+        if (lookup(to_dir, name, namelen, &to_vnode) == 0)
                 return -EEXIST;
 
         /* call the destination dir's (to) link vn_ops */
-        int ret = dir->vn_ops->link(from_vnode, to_dir, name, *namelen);
+        int ret = dir->vn_ops->link(from_vnode, to_dir, name, namelen);
 
         /*  vput the vnodes returned from open_namev and dir_namev */
         vput(from_vnode);
