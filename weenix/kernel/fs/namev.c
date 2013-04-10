@@ -122,6 +122,10 @@ open_namev(const char *pathname, int flag, vnode_t **res_vnode, vnode_t *base)
         if(!err)
         {
             err=lookup(*res_vnode,name,len,res_vnode);
+            if(err==-ENOENT)
+            {
+                return *res_vnode->vn_ops->create(*res_vnode,name,len,res_vnode);
+            }
         }
         return err;
         //NOT_YET_IMPLEMENTED("VFS: open_namev");

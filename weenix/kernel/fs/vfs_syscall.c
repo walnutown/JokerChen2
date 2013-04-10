@@ -41,7 +41,13 @@
 int
 do_read(int fd, void *buf, size_t nbytes)
 {
-        NOT_YET_IMPLEMENTED("VFS: do_read");
+        file_t* file=fget(fd);
+        if(file==NULL)
+        {
+                return -EBADF;
+        }
+        if(S_ISDIR(file->f_mode))
+        //NOT_YET_IMPLEMENTED("VFS: do_read");
         return -1;
 }
 
@@ -56,7 +62,8 @@ do_read(int fd, void *buf, size_t nbytes)
 int
 do_write(int fd, const void *buf, size_t nbytes)
 {
-        NOT_YET_IMPLEMENTED("VFS: do_write");
+        
+        //NOT_YET_IMPLEMENTED("VFS: do_write");
         return -1;
 }
 
@@ -70,7 +77,8 @@ do_write(int fd, const void *buf, size_t nbytes)
 int
 do_close(int fd)
 {
-        NOT_YET_IMPLEMENTED("VFS: do_close");
+        
+        //NOT_YET_IMPLEMENTED("VFS: do_close");
         return -1;
 }
 
@@ -93,7 +101,8 @@ do_close(int fd)
 int
 do_dup(int fd)
 {
-        NOT_YET_IMPLEMENTED("VFS: do_dup");
+        
+        //NOT_YET_IMPLEMENTED("VFS: do_dup");
         return -1;
 }
 
@@ -109,7 +118,8 @@ do_dup(int fd)
 int
 do_dup2(int ofd, int nfd)
 {
-        NOT_YET_IMPLEMENTED("VFS: do_dup2");
+        
+        //NOT_YET_IMPLEMENTED("VFS: do_dup2");
         return -1;
 }
 
