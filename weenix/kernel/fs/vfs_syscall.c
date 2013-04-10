@@ -268,7 +268,7 @@ do_mkdir(const char *path)
         int err;
         // use dir_namev() to find the vnode
         // err includeing, ENOENT, ENOTDIR, ENAMETOOLONG
-        if(err = dir_namev(path, &namelen, &name, NULL, &parent_vnode) != 0)
+        if((err = dir_namev(path, &namelen, &name, NULL, &parent_vnode) != 0)
                 return err;
         // use lookup() to make sure it doesn't already exist.
         if(lookup(parent_vnode, name, namelen, &res_vnode) == 0)
@@ -301,8 +301,18 @@ do_mkdir(const char *path)
 int
 do_rmdir(const char *path)
 {
-        NOT_YET_IMPLEMENTED("VFS: do_rmdir");
-        return -1;
+        size_t namelen;
+        const char *name;
+        vnode_t *parent_vnode;
+        vnode_t *res_vnode;
+        int err;
+        // use dir_namev() to find the vnode of the directory containing the dir to be removed.
+        // err includeing, ENOENT, ENOTDIR, ENAMETOOLONG
+        if((err = dir_namev(path, &namelen, &name, NULL, &parent_vnode) != 0)
+                return err;
+        
+        // NOT_YET_IMPLEMENTED("VFS: do_rmdir");
+        // return -1;
 }
 
 /*
