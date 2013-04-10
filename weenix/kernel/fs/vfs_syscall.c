@@ -42,13 +42,30 @@ int
 do_read(int fd, void *buf, size_t nbytes)
 {
         file_t* file=fget(fd);
-        if(file==NULL)
+        if(file==NULL||!(file->f_mode&FMODE_READ))
         {
+                fput(fd);
                 return -EBADF;
         }
-        if(S_ISDIR(file->f_mode))
+        if(S_ISDIR(file->f_vnode->vn_mode))
+        {
+                fput(fd);
+                return -EISDIR;
+        }
+        int bytes=file->f_vnode->vn_ops->read(file,file->f_pos,buf,nbytes);
+        if(bytes==0)
+        {
+                bytes=file->f_vnode->vn_len-file->f_pos;
+                do_lseek(file,0,SEEK_END);
+        }
+        else
+        {
+                do_lseek(file,nbytes,SEEK_CUR);        
+        }
+        fput(file);
+        return bytes;
         //NOT_YET_IMPLEMENTED("VFS: do_read");
-        return -1;
+        //return -1;
 }
 
 /* Very similar to do_read.  Check f_mode to be sure the file is writable.  If
@@ -62,9 +79,28 @@ do_read(int fd, void *buf, size_t nbytes)
 int
 do_write(int fd, const void *buf, size_t nbytes)
 {
-        
+        file_t* file=fget(fd);
+        if(file==NULL||(!(file->f_mode&FMODE_WRITE)&&!(file->f_mode&FMODE_APPEND)))
+        {
+                fput(fd);
+                return -EBADF;
+        }
+        int bytes;
+        if(file->f_mode&FMODE_APPEND)
+        {
+                do_lseek(file,0,SEEK_END);
+                bytes=file->f_vnode->vn_ops->write(file,file->f_pos,buf,nbytes);
+                do_lseek(file,0,SEEK_END);
+        }
+        else if(file->f_mode&FMODE_WRITE)
+        {
+                bytes=file->f_vnode->vn_ops->write(file,file->f_pos,buf,nbytes);  
+                do_lseek(file,bytes,SEEK_CUR);     
+        }
+        fput(fd);
+        retrun bytes;
         //NOT_YET_IMPLEMENTED("VFS: do_write");
-        return -1;
+        //return -1;
 }
 
 /*
@@ -101,9 +137,23 @@ do_close(int fd)
 int
 do_dup(int fd)
 {
-        
+        file_t* file=fget(fd);
+        if(file==NULL)
+        {
+                fput(fd);
+                return -EBADF;
+        }
+        int new_fd=get_empty_fd(curproc);
+        if(new_fd==-EMFILE)
+        {
+                fput(fd);
+                return -EMFILE;
+        }
+        curproc->p_files[new_fd]=file;
+        return new_fd;
+
         //NOT_YET_IMPLEMENTED("VFS: do_dup");
-        return -1;
+        //return -1;
 }
 
 /* Same as do_dup, but insted of using get_empty_fd() to get the new fd,
@@ -118,9 +168,20 @@ do_dup(int fd)
 int
 do_dup2(int ofd, int nfd)
 {
-        
+        file_t* file=fget(ofd);
+        if(file==NULL)
+        {
+                fput(ofd);
+                return -EBADF;
+        }
+        if(curproc->p_files[nfd]!=NULL&&nfd!=ofd)
+        {
+                do_close(nfd);
+        }
+        curproc->p_files[nfd]=file;
+        return nfd;
         //NOT_YET_IMPLEMENTED("VFS: do_dup2");
-        return -1;
+        //return -1;
 }
 
 /*
@@ -258,8 +319,9 @@ do_link(const char *from, const char *to)
 int
 do_rename(const char *oldname, const char *newname)
 {
-        NOT_YET_IMPLEMENTED("VFS: do_rename");
-        return -1;
+        
+        // NOT_YET_IMPLEMENTED("VFS: do_rename");
+        //return -1;
 }
 
 /* Make the named directory the current process's cwd (current working
@@ -300,8 +362,20 @@ do_chdir(const char *path)
 int
 do_getdent(int fd, struct dirent *dirp)
 {
-        NOT_YET_IMPLEMENTED("VFS: do_getdent");
-        return -1;
+        file_t *file=fget(fd);
+        if(file==NULL)
+        {
+                fput(fd);
+                return -EBADF;
+        }
+        if(!S_ISDIR(file->f_vnode->vn_mode))
+        {
+                fput(fd);
+                return -ENOTDIR;
+        }
+        if()
+        //NOT_YET_IMPLEMENTED("VFS: do_getdent");
+        //return -1;
 }
 
 /*
@@ -317,8 +391,38 @@ do_getdent(int fd, struct dirent *dirp)
 int
 do_lseek(int fd, int offset, int whence)
 {
-        NOT_YET_IMPLEMENTED("VFS: do_lseek");
-        return -1;
+        if(!(whence==SEEK_SET||whence==SEEK_CUR||whence==SEEK_END))
+        {
+                return -EINVAL;
+        }
+        else if(offset<0)
+        {
+                return -EINVAL;
+        }
+        file_t *file=fget(fd);
+        if(file==NULL)
+        {
+                fput(fd);
+                return -EBADF;
+        }
+
+        if(whence==SEEK_SET)
+        {
+                file->f_pos=offset;
+        }
+        else if(whence==SEEK_CUR)
+        {
+                file->f_pos=file->f_pos+offset;
+        }
+        else if(whence==SEEK_END)
+        {
+                file->f_pos=file->f_vnode->vn_len+offset;
+        }
+        int ref=file->f_pos;
+        fput(file);
+        return ref;
+        //NOT_YET_IMPLEMENTED("VFS: do_lseek");
+        //return -1;
 }
 
 /*

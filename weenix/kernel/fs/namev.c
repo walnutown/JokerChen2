@@ -122,7 +122,7 @@ open_namev(const char *pathname, int flag, vnode_t **res_vnode, vnode_t *base)
         if(!err)
         {
             err=lookup(*res_vnode,name,len,res_vnode);
-            if(err==-ENOENT)
+            if(err==-ENOENT&&O_CREAT==0x100)
             {
                 return *res_vnode->vn_ops->create(*res_vnode,name,len,res_vnode);
             }
