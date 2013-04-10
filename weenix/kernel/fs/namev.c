@@ -23,6 +23,7 @@
  * 
  * Note: returns with the vnode refcount on *result incremented.
  */
+ /**/
 int
 lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result)
 {
@@ -32,22 +33,22 @@ lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result)
         }
         else
         {
-             // if(name_match(name,".",1))
-             // {
-             //    dirent_t *dit;
-             //    dir->vn_ops->readdir(dir,vn_len,dit);
+             /*don't have access to parent vnode*/
+             /*if(name_match(name,".",1))
+             {
+                dirent_t *dit;
+                dir->vn_ops->readdir(dir,vn_len,dit);
                 
-             //    *result=dir;
-             //    return 0;
-             // }
-             // else if(name_match(name,"..",2))
-             // {
-             //    *result=dir->
-             // }
+                *result=dir;
+                return 0;
+             }
+             else if(name_match(name,"..",2))
+             {
+                *result=dir->
+             }*/
             return dir->vn_ops->lookup(dir,name,len,result);
         }
-        NOT_YET_IMPLEMENTED("VFS: lookup");
-        return 0;
+        
 }
 
 /* When successful this function returns data in the following "out"-arguments:
@@ -106,8 +107,6 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
                 return 0;
             }
         }while(1)
-        //NOT_YET_IMPLEMENTED("VFS: dir_namev");
-        //return 0;
 }
 
 /* This returns in res_vnode the vnode requested by the other parameters.
@@ -128,14 +127,14 @@ open_namev(const char *pathname, int flag, vnode_t **res_vnode, vnode_t *base)
         if(!err)
         {
             err=lookup(*res_vnode,name,len,res_vnode);
-            if((err==-ENOENT)&&(O_CREAT&flag))
+            if(len>STR_MAX)
+                err= -ENAMETOOLONG;
+            if((err==-ENOENT)&&(O_CREAT&flag)&&((*res_vnode)->vn_ops->create!=NULL))
             {
-                return *res_vnode->vn_ops->create(*res_vnode,name,len,res_vnode);
+                return (*res_vnode)->vn_ops->create(*res_vnode,name,len,res_vnode);
             }
         }
         return err;
-        //NOT_YET_IMPLEMENTED("VFS: open_namev");
-        //return 0;
 }
 
 #ifdef __GETCWD__
