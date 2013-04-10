@@ -328,10 +328,22 @@ do_rmdir(const char *path)
  *      o ENAMETOOLONG
  *        A component of path was too long.
  */
+
+/*
+ * unlink removes the link to the vnode in dir specified by name
+ */
 int
 do_unlink(const char *path)
 {
         NOT_YET_IMPLEMENTED("VFS: do_unlink");
+
+        size_t *namelen;
+        char *name;
+        vnode_t *dir;
+        int error;
+        if( (error = dir_namev(path, namelen, &name, NULL, &dir) != 0) 
+                return error;
+
         return -1;
 }
 
@@ -354,10 +366,18 @@ do_unlink(const char *path)
  *      o ENAMETOOLONG
  *        A component of from or to was too long.
  */
+
+/*link sets up a hard link. it links oldvnode into dir with the
+ * specified name.
+ */
+
 int
 do_link(const char *from, const char *to)
 {
         NOT_YET_IMPLEMENTED("VFS: do_link");
+
+
+
         return -1;
 }
 
