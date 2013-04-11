@@ -228,8 +228,10 @@ find:
 void
 vput(struct vnode *vn)
 {
+        /*dbg(DBG_VFS,"##########VFS:List all vnode before vput");
+        vnode_print(vn->vn_fs);*/
         KASSERT(vn);
-
+        dbg(DBG_VFS,"##########VFS: Enter vput(), vno=%d, vn_refcount=%d\n", vn->vn_vno,vn->vn_refcount);
         KASSERT(0 <= vn->vn_nrespages);
         KASSERT(vn->vn_nrespages < vn->vn_refcount);
 
@@ -269,8 +271,12 @@ vput(struct vnode *vn)
         }
 
 
-        if (0 < --vn->vn_refcount)
+        if (0 < --vn->vn_refcount) {
+            /*dbg(DBG_VFS,"##########VFS:List all vnode after vput");
+            vnode_print(vn->vn_fs);*/
+            dbg(DBG_VFS,"##########VFS: Leave vput(), vno=%d, vn_refcount=%d\n", vn->vn_vno, vn->vn_refcount);
                 return;
+            }
 
 #ifdef __MOUNTING__
         KASSERT(vn->vn_mount == vn);
@@ -300,6 +306,9 @@ vput(struct vnode *vn)
 
         list_remove(&vn->vn_link); /* remove from vn_inuse_list */
         slab_obj_free(vnode_allocator, vn);
+        dbg(DBG_VFS,"##########VFS: Leave vput(), removed, vno=%d, vn_refcount=%d\n", vn->vn_vno, vn->vn_refcount);
+        /*dbg(DBG_VFS,"##########VFS:List all vnode after(removed) vput");
+        vnode_print(vn->vn_fs);*/
 }
 
 int
