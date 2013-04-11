@@ -304,15 +304,20 @@ do_mkdir(const char *path)
         int err;
         /*Use dir_namev() to find the vnode*/
         /* Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG*/
-        if((err = dir_namev(path, &namelen, &name, NULL, &dir_vnode) != 0)
+        if((err = dir_namev(path, &namelen, &name, NULL, &dir_vnode) != 0) {
+                vput(dir_vnode);
                 return err;
+        }
         /* Use lookup() to make sure it doesn't already exist.*/
         if(lookup(dir_vnode, name, namelen, &res_vnode) == 0) {
+                vput(dir_vnode);
                 vput(res_vnode);
                 return -EEXIST;
         }
-        if(dir_vnode -> vn_ops == NULL)
+        if(dir_vnode -> vn_ops == NULL) {
+            vput(dir_vnode);
             return -ENOTDIR;
+        }
         /* Call the dir's mkdir vn_ops. Return what it returns.*/
         err = dir_vnode -> vn_ops -> mkdir(dir_vnode, name, namelen);
         vput(dir_vnode);
@@ -343,7 +348,6 @@ do_rmdir(const char *path)
         size_t namelen;
         const char *name;
         vnode_t *dir_vnode;
-        vnode_t *res_vnode;
         int err, len = 0;
         /* Check whether path has ".", ".." as its final component. */
         while(name[len++] != '\0');
@@ -357,11 +361,14 @@ do_rmdir(const char *path)
         }
         /* Use dir_namev() to find the vnode of the directory containing the dir to be removed. */
         /* Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG */
-        if((err = dir_namev(path, &namelen, &name, NULL, &dir_vnode) != 0)
+        if((err = dir_namev(path, &namelen, &name, NULL, &dir_vnode) != 0) {
+                vput(dir_vnode);
                 return err;
+        }
         /* Call the containing dir's rmdir v_op. */
         err = dir_vnode -> vn_ops -> rmdir(dir_vnode, name, namelen);
         vput(dir_vnode);
+        /* Need vput()? */
         return err;
         /* NOT_YET_IMPLEMENTED("VFS: do_rmdir"); */
         /* return -1; */
@@ -519,8 +526,9 @@ do_chdir(const char *path)
         vnode_t *new_cwd;
         int err;
         /* Up the refcount; flag!?; Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG */
-        if((err = open_namev(path, 0, &new_cwd, NULL) != 0)
+        if((err = open_namev(path, 0, &new_cwd, NULL) != 0) {
             return err;
+        }
         curproc -> p_cwd = new_cwd;
         return 0;
         /* NOT_YET_IMPLEMENTED("VFS: do_chdir"); */
