@@ -105,6 +105,7 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
                     return -ENAMETOOLONG;
                 if(err=lookup(basic,pathname[last],i-last-1,res_vnode))
                 {
+                    vput(basic);
                     return err;
                 }
                 vput(basic);
