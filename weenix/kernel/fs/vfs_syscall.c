@@ -295,6 +295,7 @@ do_mknod(const char *path, int mode, unsigned devid)
                 /* path doesn't exist */
                 if (error == -ENOENT)
                 {
+                        KASSERT(NULL != dir->vn_ops->mknod);
                         int ret = dir->vn_ops->mknod(dir, name, namelen, mode, (devid_t)devid);
                         vput(dir);
                         dbg(DBG_VFS,"VFS: Leave do_mknod()\n");
@@ -354,6 +355,7 @@ do_mkdir(const char *path)
             return -ENOTDIR;
         }
         /* Call the dir's mkdir vn_ops. Return what it returns.*/
+        KASSERT(NULL != dir_vnode->vn_ops->mkdir);
         err = dir_vnode -> vn_ops -> mkdir(dir_vnode, name, namelen);
         vput(dir_vnode);
         dbg(DBG_VFS,"VFS: Leave do_mkdir()\n");
@@ -409,6 +411,7 @@ do_rmdir(const char *path)
             return -ENOTDIR;
         }
         /* Call the containing dir's rmdir v_op. */
+        KASSERT(NULL != dir_vnode->vn_ops->rmdir);
         err = dir_vnode -> vn_ops -> rmdir(dir_vnode, name, namelen);
         vput(dir_vnode);
         /* Need vput()? */
@@ -466,6 +469,7 @@ do_unlink(const char *path)
         }
         
         /* reomve the result vnode from the directory*/
+        KASSERT(NULL != dir->vn_ops->unlink);
         int ret = dir->vn_ops->unlink(dir, name, namelen);
         vput(result);
         vput(dir);
@@ -726,6 +730,7 @@ do_stat(const char *path, struct stat *buf)
             if(!err)
             {
                 vput(par);
+                KASSERT(chd->vn_ops->stat);
                 chd->vn_ops->stat(chd,buf);
                 vput(chd);
                 dbg(DBG_VFS,"VFS: Leave do_stat()\n");

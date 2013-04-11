@@ -434,6 +434,9 @@ init_special_vnode(vnode_t *vn)
 static int
 special_file_read(vnode_t *file, off_t offset, void *buf, size_t count)
 {
+        KASSERT(file);
+        KASSERT((S_ISCHR(file->vn_mode) || S_ISBLK(file->vn_mode)));
+        
         if(S_ISBLK(file->vn_mode))
         {
             return -ENOTSUP;
@@ -441,6 +444,7 @@ special_file_read(vnode_t *file, off_t offset, void *buf, size_t count)
         int bytes=0;
         if(S_ISCHR(file->vn_mode))
         {
+            KASSERT(file->vn_cdev && file->vn_cdev->cd_ops && file->vn_cdev->cd_ops->read);
             file->vn_cdev=bytedev_lookup(file->vn_devid);
             bytes=file->vn_cdev->cd_ops->read(file->vn_cdev,offset,buf,count);
         }
@@ -456,6 +460,8 @@ special_file_read(vnode_t *file, off_t offset, void *buf, size_t count)
 static int
 special_file_write(vnode_t *file, off_t offset, const void *buf, size_t count)
 {
+        KASSERT(file);
+        KASSERT((S_ISCHR(file->vn_mode) || S_ISBLK(file->vn_mode)));
         if(S_ISBLK(file->vn_mode))
         {
             return -ENOTSUP;
@@ -463,6 +469,7 @@ special_file_write(vnode_t *file, off_t offset, const void *buf, size_t count)
         int bytes=0;
         if(S_ISCHR(file->vn_mode))
         {
+            KASSERT(file->vn_cdev && file->vn_cdev->cd_ops && file->vn_cdev->cd_ops->write);
             file->vn_cdev=bytedev_lookup(file->vn_devid);
             bytes=file->vn_cdev->cd_ops->write(file->vn_cdev,offset,buf,count);
         }
