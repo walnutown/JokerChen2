@@ -167,9 +167,21 @@ do_open(const char *filename, int oflags)
             return -ENXIO;
         }
     }
+
     /*-- 6. Fill in the fields of the file_t --*/
     f->f_vnode = res_vnode;
     f->f_pos = 0;
+
+    /* check O_TRUNC:
+     * If the file already exists and is a regular file and the open mode 
+     * allows writing (i.e., is O_RDWR or O_WRONLY) it will be truncated to
+     * length 0. If the file is a FIFO or terminal device file, the O_TRUNC
+     * flag is ignored. Otherwise the effect of O_TRUNC is unspecified.
+     */
+    if ( (oflags & O_TRUNC & O_WRONLY) || (oflags & O_TRUNC & O_RDWR) ) && S_ISREG(res_vnode->vn_mode) )
+    {
+
+    }
     
     return fd;
 }
