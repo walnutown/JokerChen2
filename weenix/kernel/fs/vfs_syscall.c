@@ -56,19 +56,26 @@ do_read(int fd, void *buf, size_t nbytes)
                 fput(file);
                 return -EISDIR;
         }
-
         int bytes=file->f_vnode->vn_ops->read(file->f_vnode,file->f_pos,buf,nbytes);
-        if(bytes==0)
+        if(nbytes!=0)
         {
-                bytes=file->f_vnode->vn_len-file->f_pos;
-                do_lseek(fd,0,SEEK_END);
+                if(bytes==0)
+                {
+                        bytes=file->f_vnode->vn_len-file->f_pos;
+                        do_lseek(fd,0,SEEK_END);
+                }
+                else
+                {
+                        do_lseek(fd,bytes,SEEK_CUR);        
+                }
+                fput(file);
+                return bytes;
         }
         else
         {
-                do_lseek(fd,bytes,SEEK_CUR);        
+                fput(file);
+                return nbytes;
         }
-        fput(file);
-        return bytes;
 }
 
 /* Very similar to do_read.  Check f_mode to be sure the file is writable.  If
@@ -92,7 +99,7 @@ do_write(int fd, const void *buf, size_t nbytes)
                 fput(file);
                 return -EBADF;
         }
-        if(file->f_vnode->vn_ops->write==NULL)
+        if(S_ISDIR(file->f_vnode->vn_mode)||file->f_vnode->vn_ops->write==NULL)
         {
                 fput(file);
                 return -EISDIR;
@@ -111,7 +118,7 @@ do_write(int fd, const void *buf, size_t nbytes)
                 do_lseek(fd,bytes,SEEK_CUR);     
         }
         fput(file);
-        retrun bytes;
+        return bytes;
 }
 
 /*
