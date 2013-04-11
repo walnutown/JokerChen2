@@ -128,7 +128,13 @@ do_open(const char *filename, int oflags)
      */
     vnode_t *res_vnode;
     int error;
-    if((error = open_namev(filename, 0, &res_vnode, NULL)) != 0 )  
+    int create=0;
+    if ((oflags & O_CREAT))
+    {
+        create=1;
+    }
+    
+    if((error = open_namev(filename, create, &res_vnode, NULL)) != 0 )  
     {
         curproc->p_files[fd] = NULL;
         fput(f);
