@@ -26,7 +26,7 @@
 int
 lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result)
 {
-        dbg(DBG_VFS,"VFS: Enter lookup(), look for %s\n", name);
+        dbg(DBG_VFS,"VFS: Enter lookup(), look for %s, length %d\n", name, len);
         KASSERT(NULL != dir);
         KASSERT(NULL != name);
         KASSERT(NULL != result);
@@ -93,6 +93,7 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
         basic=base==NULL?curproc->p_cwd:base;
         basic=pathname[0]=='/'?vfs_root_vn:basic;
         int last=pathname[0]=='/'?1:0;
+        vget(basic->vn_fs,basic->vn_vno);
         int i = last;
         do
         {

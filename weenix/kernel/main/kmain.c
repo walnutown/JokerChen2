@@ -218,10 +218,14 @@ idleproc_run(int arg1, void *arg2)
         initthr->kt_proc->p_cwd = vfs_root_vn;
         vref(vfs_root_vn);
 
+        dbg(DBG_VFS,"##########VFS: Enter do_mkdir/dev\n");
         do_mkdir("/dev");
-        do_mknod("/dev/null",S_IFCHR, MKDEVID(1,0)); 
+        dbg(DBG_VFS,"##########VFS: Enter do_mknod/dev/null\n");
+        do_mknod("/dev/null",S_IFCHR, MKDEVID(1,0));
+        dbg(DBG_VFS,"##########VFS: Enter do_mknod/dev/zero\n");
         do_mknod("/dev/zero",S_IFCHR, MKDEVID(1,1));
-        do_mknod("/dev/tty0",S_IFCHR, MKDEVID(2,0)); 
+        dbg(DBG_VFS,"##########VFS: Enter do_mknod/dev/tty0\n");
+        do_mknod("/dev/tty0",S_IFCHR, MKDEVID(2,0));
         /* Here you need to make the null, zero, and tty devices using mknod */
         /* You can't do this until you have VFS, check the include/drivers/dev.h
          * file for macros with the device ID's you will need to pass to mknod */
