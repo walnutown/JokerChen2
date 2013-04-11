@@ -383,23 +383,24 @@ do_mkdir(const char *path)
 int
 do_rmdir(const char *path)
 {
-        dbg(DBG_VFS,"VFS: Enter do_rmdir()\n");  
+        dbg(DBG_VFS,"VFS: Enter do_rmdir(), path=%s\n", path);
         size_t namelen;
         const char *name;
         vnode_t *dir_vnode;
         int err, len = 0;
         /* Check whether path has ".", ".." as its final component. */
-        while(name[len++] != '\0');
+        while(path[len++] != '\0');
         len -= 2;
-        if(name[len] == '.') {
-                if(name[--len] == '/')
+        if(path[len] == '.') {
+                if(path[--len] == '/')
                         return -EINVAL;
-                else if(name[len] == '.')
-                        if(name[--len] == '/')
+                else if(path[len] == '.')
+                        if(path[--len] == '/')
                                 return -ENOTEMPTY;
         }
         /* Use dir_namev() to find the vnode of the directory containing the dir to be removed. */
         /* Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG */
+        dbg(DBG_VFS,"VFS: execute here.");
         if((err = dir_namev(path, &namelen, &name, NULL, &dir_vnode) ) != 0) {
                 /* vput(dir_vnode); */
                 dbg(DBG_VFS,"VFS: Leave do_rmdir()\n");
@@ -647,10 +648,30 @@ do_getdent(int fd, struct dirent *dirp)
 
         int bytes;
         bytes=file->f_vnode->vn_ops->readdir(file->f_vnode,file->f_pos,dirp);
-        do_lseek(fd,bytes,SEEK_CUR);
+        /*do_lseek(fd,bytes,SEEK_CUR);*/
         fput(file);
-        dbg(DBG_VFS,"VFS: Leave do_getdent()\n");
-        return bytes;
+        /*dbg(DBG_VFS,"VFS: Leaving do_getdent()\n");*/
+        /*return sizeof(*dirp);*/
+        dbg(DBG_VFS,"VFS: In do_getdent(), file->f_pos+bytes=%d\n", file->f_pos+bytes);
+        dbg(DBG_VFS,"VFS: In do_getdent(), file->f_vnode->vn_len=%d\n", file->f_vnode->vn_len);
+        if(bytes==0)
+        {
+            do_lseek(fd,0,SEEK_END);
+            return 0;
+        }
+        do_lseek(fd,bytes,SEEK_CUR);
+        return sizeof(*dirp);
+
+         /*if(file->f_pos+bytes<file->f_vnode->vn_len)
+        {
+            file->f_pos+=file->f_pos+bytes;
+            return sizeof(*dirp);
+        }
+        else
+        {
+            do_lseek(fd,0,SEEK_END);
+            return 0;
+        }*/
 }
 
 /*

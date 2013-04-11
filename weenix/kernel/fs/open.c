@@ -80,17 +80,18 @@ do_open(const char *filename, int oflags)
      * O_WRONLY, O_RDONLY, O_RDWR is mutual exculsive and at least one of 
      * them should be included in oflags.
      */
-    int flag = oflags & 0x00f;
-    if (!(flag & O_WRONLY || flag & O_RDONLY || flag & O_RDWR ))
+    int flag = oflags & 0x003;
+    dbg(DBG_VFS,"##########VFS: In do_open(), flag=%x\n", flag);
+    if (flag == 3)
     {
-        dbg(DBG_VFS,"VFS: Exit do_open(), ont a valid mode");
+        dbg(DBG_VFS,"VFS: Exit do_open(), not a valid mode\n");
         return -EINVAL;
     }
             /*-- 1. Get the next empty file descriptor --*/
     int fd = get_empty_fd(curproc);
     if (fd == -EMFILE)
     {
-        dbg(DBG_VFS,"VFS: Exit do_open(), -EMFILE;");
+        dbg(DBG_VFS,"VFS: Exit do_open(), -EMFILE;\n");
         return -EMFILE;
     }
          
@@ -98,7 +99,7 @@ do_open(const char *filename, int oflags)
     file_t *f = fget(-1);
     if (f == NULL)
     {
-        dbg(DBG_VFS,"VFS: Exit do_open(), f == NULL;");
+        dbg(DBG_VFS,"VFS: Exit do_open(), f == NULL;\n");
         return -ENOMEM;
     }
         
@@ -195,6 +196,6 @@ do_open(const char *filename, int oflags)
     {
 
     }*/
-    dbg(DBG_VFS,"VFS: Leave do_open(),success\n");
+    dbg(DBG_VFS,"VFS: Leave do_open(),success return fd=%d\n", fd);
     return fd;
 }
