@@ -75,24 +75,33 @@ int
 do_open(const char *filename, int oflags)
 {
     NOT_YET_IMPLEMENTED("VFS: do_open");
-    dbg(DBG_VFS,"VFS: Enter do_open()\n");
+    dbg(DBG_VFS,"VFS: Enter do_open(), filename %s\n",filename);
     /* get the least significant bit of the oflags, and validate the oflags.
      * O_WRONLY, O_RDONLY, O_RDWR is mutual exculsive and at least one of 
      * them should be included in oflags.
      */
     int flag = oflags & 0x00f;
     if (!(flag & O_WRONLY || flag & O_RDONLY || flag & O_RDWR ))
+    {
+        dbg(DBG_VFS,"VFS: Exit do_open(), ont a valid mode");
         return -EINVAL;
-    /*-- 1. Get the next empty file descriptor --*/
+    }
+            /*-- 1. Get the next empty file descriptor --*/
     int fd = get_empty_fd(curproc);
     if (fd == -EMFILE)
+    {
+        dbg(DBG_VFS,"VFS: Exit do_open(), -EMFILE;");
         return -EMFILE;
- 
+    }
+         
     /*-- 2. Call fget to get a fresh file_t --*/
     file_t *f = fget(-1);
     if (f == NULL)
+    {
+        dbg(DBG_VFS,"VFS: Exit do_open(), f == NULL;");
         return -ENOMEM;
-
+    }
+        
     /*-- 3. Save the file_t in curproc's file descriptor table --*/
     KASSERT(!curproc->p_files[fd]);
     curproc->p_files[fd] = f;
@@ -138,6 +147,7 @@ do_open(const char *filename, int oflags)
     {
         curproc->p_files[fd] = NULL;
         fput(f);
+        dbg(DBG_VFS,"VFS: Exit do_open(), file not exists;");
         return error;
     }
 
@@ -146,6 +156,7 @@ do_open(const char *filename, int oflags)
     {
         curproc->p_files[fd] = NULL;
         fput(f);
+        dbg(DBG_VFS,"VFS: Exit do_open(), -EISDIR;");
         return -EISDIR;
     }
     /* pathname refers to a device special file and no corresponding device exists */
@@ -155,6 +166,7 @@ do_open(const char *filename, int oflags)
         {
             curproc->p_files[fd] = NULL;
             fput(f);
+            dbg(DBG_VFS,"VFS: Exit do_open(), -ENXIO 1;");
             return -ENXIO;
         }
     }
@@ -164,6 +176,7 @@ do_open(const char *filename, int oflags)
         {
             curproc->p_files[fd] = NULL;
             fput(f);
+            dbg(DBG_VFS,"VFS: Exit do_open(), -ENXIO 2;");
             return -ENXIO;
         }
     }
@@ -182,6 +195,6 @@ do_open(const char *filename, int oflags)
     {
 
     }*/
-    dbg(DBG_VFS,"VFS: Leave do_open()\n");
+    dbg(DBG_VFS,"VFS: Leave do_open(),success\n");
     return fd;
 }

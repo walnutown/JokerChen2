@@ -151,10 +151,10 @@ do_close(int fd)
         }
         curproc->p_files[fd]=NULL;
 
-        while(file->f_refcount!=0)
-        {
+        /*while(file->f_refcount!=0)
+        {*/
                 fput(file);
-        } 
+        /*} */
         dbg(DBG_VFS,"VFS: Leave do_close()\n");
         return 0;
 }
@@ -264,11 +264,11 @@ do_dup2(int ofd, int nfd)
 int
 do_mknod(const char *path, int mode, unsigned devid)
 {
-        dbg(DBG_VFS,"VFS: Enter do_mknod()\n");
+        dbg(DBG_VFS,"VFS: Enter do_mknod(), path %s\n", path);
         /* validate mode type */
         if (!(S_ISCHR(mode) || (S_ISBLK(mode))))
         {
-                dbg(DBG_VFS,"VFS: Leave do_mknod()\n");
+                dbg(DBG_VFS,"VFS: Leave do_mknod(), mode error\n");
                 return -EINVAL;
         }
         /* get directory vnode*/
@@ -278,7 +278,7 @@ do_mknod(const char *path, int mode, unsigned devid)
         int error;
         if((error = dir_namev(path, &namelen, &name, NULL, &dir) ) != 0) /*ENOENT ENOTDIR ENAMETOOLONG*/
         {
-                dbg(DBG_VFS,"VFS: Leave do_mknod()\n");
+                dbg(DBG_VFS,"VFS: Leave do_mknod(), error cannot find dir\n");
                 return error;
         }
         vnode_t *result;
@@ -288,7 +288,7 @@ do_mknod(const char *path, int mode, unsigned devid)
                 if (error == -ENOTDIR || dir->vn_ops->mknod==NULL||!S_ISDIR(dir->vn_mode))/* ?bug fixed here*/
                 {
                         vput(dir);
-                        dbg(DBG_VFS,"VFS: Leave do_mknod()\n");
+                        dbg(DBG_VFS,"VFS: Leave do_mknod(), error is not dir\n");
                         return -ENOTDIR;
                 }
                 KASSERT(S_ISDIR(dir->vn_mode));
@@ -298,16 +298,16 @@ do_mknod(const char *path, int mode, unsigned devid)
                         KASSERT(NULL != dir->vn_ops->mknod);
                         int ret = dir->vn_ops->mknod(dir, name, namelen, mode, (devid_t)devid);
                         vput(dir);
-                        dbg(DBG_VFS,"VFS: Leave do_mknod()\n");
+                        dbg(DBG_VFS,"VFS: Leave do_mknod(), error cannot find name\n");
                         return ret;
                 }
                 
                 vput(dir);
-                dbg(DBG_VFS,"VFS: Leave do_mknod()\n");
+                dbg(DBG_VFS,"VFS: Leave do_mknod(), other error\n");
                 return error;
         }
         vput(dir);
-        vput(result);
+        /* vput(result); */
         dbg(DBG_VFS,"VFS: Leave do_mknod()\n");
         return -EEXIST;
 }
@@ -339,26 +339,26 @@ do_mkdir(const char *path)
         /* Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG*/
         if((err = dir_namev(path, &namelen, &name, NULL, &dir_vnode) ) != 0) {
                 /* vput(dir_vnode); */
-                dbg(DBG_VFS,"VFS: Leave do_mkdir()\n");
+                dbg(DBG_VFS,"VFS: Leave do_mkdir(), cannot find path %s, err=%d\n", path, err);
                 return err;
         }
         /* Use lookup() to make sure it doesn't already exist.*/
         if(lookup(dir_vnode, name, namelen, &res_vnode) == 0) {
                 vput(dir_vnode);
                 vput(res_vnode);
-                dbg(DBG_VFS,"VFS: Leave do_mkdir()\n");
+                dbg(DBG_VFS,"VFS: Leave do_mkdir(), err file already exist\n");
                 return -EEXIST;
         }
         if(dir_vnode -> vn_ops -> mkdir == NULL) {
             vput(dir_vnode);
-            dbg(DBG_VFS,"VFS: Leave do_mkdir()\n");
+            dbg(DBG_VFS,"VFS: Leave do_mkdir(), err not directory\n");
             return -ENOTDIR;
         }
         /* Call the dir's mkdir vn_ops. Return what it returns.*/
         KASSERT(NULL != dir_vnode->vn_ops->mkdir);
         err = dir_vnode -> vn_ops -> mkdir(dir_vnode, name, namelen);
         vput(dir_vnode);
-        dbg(DBG_VFS,"VFS: Leave do_mkdir()\n");
+        dbg(DBG_VFS,"VFS: Leave do_mkdir(), err=%d\n", err);
         return err;
 }
 

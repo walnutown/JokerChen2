@@ -647,7 +647,7 @@ kshell_run(int arg1, void *arg2) {
     dbg_print("Leave kshell_run\n");
     return NULL;*/
 
-    kshell_t *new_shell;
+    /*kshell_t *new_shell;
     int i;
     while (1)
     {
@@ -657,6 +657,14 @@ kshell_run(int arg1, void *arg2) {
         kshell_destroy(new_shell);
         if(i==0){break;}
     }
+    return NULL;*/
+    int err = 0; 
+    kshell_t *ksh = kshell_create(0); 
+    KASSERT(ksh && "kshell create error");
+    while ((err = kshell_execute_next(ksh)) > 0);
+    KASSERT(err == 0 && "kshell exit error\n");
+    kshell_destroy(ksh);
+
     return NULL;
 }
 
