@@ -81,6 +81,7 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
         basic=base==NULL?curproc->p_cwd:base;
         basic=pathname[0]=='/'?vfs_root_vn:basic;
         int last=pathname[0]=='/'?1:0;
+        int i = last;
         do
         {
             while(pathname[i++]!='/')
@@ -92,9 +93,9 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
                         vput(basic);
                         return -ENAMETOOLONG;
                     }
-                    res_vnode=*basic;
-                    namelen=i-last;
-                    name=&pathname[last];
+                    *res_vnode=basic;
+                    *namelen=i-last;
+                    *name=&pathname[last];
                     return 0;
                 }
             }
@@ -103,7 +104,7 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
             {
                 if(i-last-1>STR_MAX)
                     return -ENAMETOOLONG;
-                if(err=lookup(basic,pathname[last],i-last-1,res_vnode))
+                if((err=lookup(basic,pathname + last,i-last-1,res_vnode)))
                 {
                     vput(basic);
                     return err;
@@ -114,12 +115,12 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
             }
             else/*handle*/
             {
-                res_vnode=*basic;
+                *res_vnode=basic;
                 namelen=0;
                 name=NULL;
                 return 0;
             }
-        }while(1)
+        }while(1);
 }
 
 /* This returns in res_vnode the vnode requested by the other parameters.
@@ -134,7 +135,7 @@ int
 open_namev(const char *pathname, int flag, vnode_t **res_vnode, vnode_t *base)
 {
         size_t len;
-        char *name;
+        const char *name;
         int err=0;
         vnode_t *par;
         err=dir_namev(pathname,&len,&name,base,&par);

@@ -46,7 +46,7 @@ do_read(int fd, void *buf, size_t nbytes)
         {
                 return -EBADF;
         }
-        if(!file->f_mode&FMODE_READ))
+        if(!(file->f_mode&FMODE_READ))
         {
                 fput(file);
                 return -EBADF;
@@ -250,7 +250,7 @@ do_mknod(const char *path, int mode, unsigned devid)
         const char *name;
         vnode_t *dir;
         int error;
-        if((error = dir_namev(path, &namelen, &name, NULL, &dir) != 0) /*ENOENT ENOTDIR ENAMETOOLONG*/
+        if((error = dir_namev(path, &namelen, &name, NULL, &dir) ) != 0) /*ENOENT ENOTDIR ENAMETOOLONG*/
                 return error;
         vnode_t *result;
         if ((error = lookup(dir, name, namelen, &result)) != 0)
@@ -302,7 +302,7 @@ do_mkdir(const char *path)
         int err;
         /*Use dir_namev() to find the vnode*/
         /* Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG*/
-        if((err = dir_namev(path, &namelen, &name, NULL, &dir_vnode) != 0) {
+        if((err = dir_namev(path, &namelen, &name, NULL, &dir_vnode) ) != 0) {
                 /* vput(dir_vnode); */
                 return err;
         }
@@ -359,7 +359,7 @@ do_rmdir(const char *path)
         }
         /* Use dir_namev() to find the vnode of the directory containing the dir to be removed. */
         /* Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG */
-        if((err = dir_namev(path, &namelen, &name, NULL, &dir_vnode) != 0) {
+        if((err = dir_namev(path, &namelen, &name, NULL, &dir_vnode) ) != 0) {
                 /* vput(dir_vnode); */
                 return err;
         }
@@ -402,7 +402,7 @@ do_unlink(const char *path)
         const char *name;
         vnode_t *dir;
         int error;
-        if ((error = dir_namev(path, &namelen, &name, NULL, &dir) != 0) 
+        if ((error = dir_namev(path, &namelen, &name, NULL, &dir) ) != 0) 
                 return error;
         /* check if path refers to a directory */
         vnode_t *result;
@@ -477,14 +477,14 @@ do_link(const char *from, const char *to)
                 return -EEXIST;
         }
 
-        if (dir->vn_ops->link == NULL)
+        if (to_dir->vn_ops->link == NULL)
         {
                 vput(from_vnode);
                 vput(to_dir);
                 return -ENOTDIR;
         }
         /* call the destination dir's (to) link vn_ops; 'from_vnode' refcount++ in link()*/
-        int ret = dir->vn_ops->link(from_vnode, to_dir, name, namelen);
+        int ret = to_dir->vn_ops->link(from_vnode, to_dir, name, namelen);
 
         /* vput the vnodes returned from open_namev and dir_namev */
         vput(from_vnode);
@@ -536,7 +536,7 @@ do_chdir(const char *path)
         vnode_t *new_cwd;
         int err;
         /* Up the refcount; flag!?; Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG */
-        if((err = open_namev(path, 0, &new_cwd, NULL) != 0) {
+        if((err = open_namev(path, 0, &new_cwd, NULL) ) != 0) {
             return err;
         }
         /* fput? */
@@ -578,7 +578,7 @@ do_getdent(int fd, struct dirent *dirp)
 
         int bytes;
         bytes=file->f_vnode->vn_ops->readdir(file->f_vnode,file->f_pos,dirp);
-        do_lseek(file,bytes,SEEK_CUR);
+        do_lseek(fd,bytes,SEEK_CUR);
         fput(file);
         return bytes;
 }
@@ -643,7 +643,7 @@ int
 do_stat(const char *path, struct stat *buf)
 {
         size_t len;
-        char *name;
+        const char *name;
         vnode_t* par;
         vnode_t* chd;
         int err=0;

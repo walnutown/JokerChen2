@@ -81,7 +81,7 @@ do_open(const char *filename, int oflags)
      * them should be included in oflags.
      */
     int flag = oflags & 0x00f;
-    if (!(flag & O_WRONLY | flag & O_RDONLY | flag & O_RDWR ))
+    if (!(flag & O_WRONLY || flag & O_RDONLY || flag & O_RDWR ))
         return -EINVAL;
     /*-- 1. Get the next empty file descriptor --*/
     int fd = get_empty_fd(curproc);
@@ -151,7 +151,7 @@ do_open(const char *filename, int oflags)
     /* pathname refers to a device special file and no corresponding device exists */
     if(S_ISCHR(res_vnode->vn_mode))
     {
-        if(!res_vnode->vn_cdev = bytedev_lookup(res_vnode->vn_devid))
+        if(!(res_vnode->vn_cdev = bytedev_lookup(res_vnode->vn_devid)))
         {
             curproc->p_files[fd] = NULL;
             fput(f);
@@ -160,7 +160,7 @@ do_open(const char *filename, int oflags)
     }
     if(S_ISBLK(res_vnode->vn_mode))
     {
-        if(!res_vnode->vn_bdev = blockdev_lookup(res_vnode->vn_devid))
+        if(!(res_vnode->vn_bdev = blockdev_lookup(res_vnode->vn_devid)))
         {
             curproc->p_files[fd] = NULL;
             fput(f);
@@ -178,10 +178,10 @@ do_open(const char *filename, int oflags)
      * length 0. If the file is a FIFO or terminal device file, the O_TRUNC
      * flag is ignored. Otherwise the effect of O_TRUNC is unspecified.
      */
-    if ( (oflags & O_TRUNC & O_WRONLY) || (oflags & O_TRUNC & O_RDWR) ) && S_ISREG(res_vnode->vn_mode) )
+    /*if ( (oflags & O_TRUNC & O_WRONLY) || (oflags & O_TRUNC & O_RDWR) ) && S_ISREG(res_vnode->vn_mode) )
     {
 
-    }
+    }*/
     
     return fd;
 }
