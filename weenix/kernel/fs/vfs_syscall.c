@@ -303,10 +303,15 @@ do_mkdir(const char *path)
         if((err = dir_namev(path, &namelen, &name, NULL, &dir_vnode) != 0)
                 return err;
         /* Use lookup() to make sure it doesn't already exist.*/
-        if(lookup(dir_vnode, name, namelen, &res_vnode) == 0)
-                return EEXIST;
+        if(lookup(dir_vnode, name, namelen, &res_vnode) == 0) {
+                vput(res_vnode);
+                return -EEXIST;
+        }
+        if(dir_vnode -> vn_ops == NULL)
+            return -ENOTDIR;
         /* Call the dir's mkdir vn_ops. Return what it returns.*/
         err = dir_vnode -> vn_ops -> mkdir(dir_vnode, name, namelen);
+        vput(dir_vnode);
         return err;
 }
 
@@ -336,25 +341,26 @@ do_rmdir(const char *path)
         vnode_t *dir_vnode;
         vnode_t *res_vnode;
         int err, len = 0;
-        // Check whether path has ".", ".." as its final component.
+        /* Check whether path has ".", ".." as its final component. */
         while(name[len++] != '\0');
         len -= 2;
         if(name[len] == '.') {
                 if(name[--len] == '/')
-                        return EINVAL;
+                        return -EINVAL;
                 else if(name[len] == '.')
                         if(name[--len] == '/')
-                                return ENOTEMPTY;
+                                return -ENOTEMPTY;
         }
-        // Use dir_namev() to find the vnode of the directory containing the dir to be removed.
-        // Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG
+        /* Use dir_namev() to find the vnode of the directory containing the dir to be removed. */
+        /* Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG */
         if((err = dir_namev(path, &namelen, &name, NULL, &dir_vnode) != 0)
                 return err;
-        // Call the containing dir's rmdir v_op.
+        /* Call the containing dir's rmdir v_op. */
         err = dir_vnode -> vn_ops -> rmdir(dir_vnode, name, namelen);
+        vput(dir_vnode);
         return err;
-        // NOT_YET_IMPLEMENTED("VFS: do_rmdir");
-        // return -1;
+        /* NOT_YET_IMPLEMENTED("VFS: do_rmdir"); */
+        /* return -1; */
 }
 
 /*
@@ -493,21 +499,21 @@ do_rename(const char *oldname, const char *newname)
 int
 do_chdir(const char *path)
 {
-        // Get the current process's cwd
+        /* Get the current process's cwd */
         vnode_t *old_cwd = curproc -> p_cwd;
-        // Down the refcount to the old cwd
-        // fput?
+        /* Down the refcount to the old cwd */
+        /* fput? */
         vput(old_cwd);
 
         vnode_t *new_cwd;
         int err;
-        // Up the refcount; flag!?; Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG
+        /* Up the refcount; flag!?; Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG */
         if((err = open_namev(path, 0, &new_cwd, NULL) != 0)
             return err;
         curproc -> p_cwd = new_cwd;
         return 0;
-        // NOT_YET_IMPLEMENTED("VFS: do_chdir");
-        // return -1;
+        /* NOT_YET_IMPLEMENTED("VFS: do_chdir"); */
+        /* return -1; */
 }
 
 /* Call the readdir f_op on the given fd, filling in the given dirent_t*.
