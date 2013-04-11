@@ -275,6 +275,8 @@ do_mknod(const char *path, int mode, unsigned devid)
                 vput(dir);
                 return error;
         }
+        vput(dir);
+        vput(result);
         return -EEXIST;
 }
 
@@ -403,11 +405,13 @@ do_unlink(const char *path)
         if (!S_ISDIR(result->vn_mode))
         {
                 vput(dir);
+                vput(result);
                 return -EISDIR;
         }
         
         /* reomve the result vnode from the directory*/
         int ret = dir->vn_ops->unlink(dir, name, namelen);
+        /* result has been vput'ed in unlink */
         vput(dir);
         return ret;
 }
@@ -454,9 +458,12 @@ do_link(const char *from, const char *to)
         /* check if to_vnode has already existed */
         vnode_t *to_vnode;
         if (lookup(to_dir, name, namelen, &to_vnode) == 0)
+        {
+                vput(to_vnode);
                 return -EEXIST;
+        }
 
-        /* call the destination dir's (to) link vn_ops */
+        /* call the destination dir's (to) link vn_ops; 'from_vnode' refcount++ in link()*/
         int ret = dir->vn_ops->link(from_vnode, to_dir, name, namelen);
 
         /* vput the vnodes returned from open_namev and dir_namev */
