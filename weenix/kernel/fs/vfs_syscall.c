@@ -41,19 +41,23 @@
 int
 do_read(int fd, void *buf, size_t nbytes)
 {
+        dbg(DBG_VFS,"VFS: Enter do_read()\n");
         file_t* file=fget(fd);
         if(file==NULL)
         {
+                dbg(DBG_VFS,"VFS: Leave do_read()\n");
                 return -EBADF;
         }
         if(!(file->f_mode&FMODE_READ))
         {
                 fput(file);
+                dbg(DBG_VFS,"VFS: Leave do_read()\n");
                 return -EBADF;
         }
         if(S_ISDIR(file->f_vnode->vn_mode)||file->f_vnode->vn_ops->read==NULL)
         {
                 fput(file);
+                dbg(DBG_VFS,"VFS: Leave do_read()\n");
                 return -EISDIR;
         }
         int bytes=file->f_vnode->vn_ops->read(file->f_vnode,file->f_pos,buf,nbytes);
@@ -69,11 +73,13 @@ do_read(int fd, void *buf, size_t nbytes)
                         do_lseek(fd,bytes,SEEK_CUR);        
                 }
                 fput(file);
+                dbg(DBG_VFS,"VFS: Leave do_read()\n");
                 return bytes;
         }
         else
         {
                 fput(file);
+                dbg(DBG_VFS,"VFS: Leave do_read()\n");
                 return nbytes;
         }
 }
@@ -89,19 +95,23 @@ do_read(int fd, void *buf, size_t nbytes)
 int
 do_write(int fd, const void *buf, size_t nbytes)
 {
+        dbg(DBG_VFS,"VFS: Enter do_write()\n");
         file_t* file=fget(fd);
         if(file==NULL)
         {
+                dbg(DBG_VFS,"VFS: Leave do_write()\n");
                 return -EBADF;
         }
         if(!(file->f_mode&FMODE_WRITE)&&!(file->f_mode&FMODE_APPEND))
         {
                 fput(file);
+                dbg(DBG_VFS,"VFS: Leave do_write()\n");
                 return -EBADF;
         }
         if(S_ISDIR(file->f_vnode->vn_mode)||file->f_vnode->vn_ops->write==NULL)
         {
                 fput(file);
+                dbg(DBG_VFS,"VFS: Leave do_write()\n");
                 return -EISDIR;
         }
 
@@ -118,6 +128,7 @@ do_write(int fd, const void *buf, size_t nbytes)
                 do_lseek(fd,bytes,SEEK_CUR);     
         }
         fput(file);
+        dbg(DBG_VFS,"VFS: Leave do_write()\n");
         return bytes;
 }
 
@@ -131,9 +142,11 @@ do_write(int fd, const void *buf, size_t nbytes)
 int
 do_close(int fd)
 {
+        dbg(DBG_VFS,"VFS: Enter do_close()\n");
         file_t* file=fget(fd);
         if(file==NULL)
         {
+                dbg(DBG_VFS,"VFS: Leave do_close()\n");
                 return -EBADF;
         }
         curproc->p_files[fd]=NULL;
@@ -142,6 +155,7 @@ do_close(int fd)
         {
                 fput(file);
         } 
+        dbg(DBG_VFS,"VFS: Leave do_close()\n");
         return 0;
 }
 
@@ -164,18 +178,22 @@ do_close(int fd)
 int
 do_dup(int fd)
 {
+        dbg(DBG_VFS,"VFS: Enter do_dup()\n");
         file_t* file=fget(fd);
         if(file==NULL)
         {
+                dbg(DBG_VFS,"VFS: Leave do_dup()\n");
                 return -EBADF;
         }
         int new_fd=get_empty_fd(curproc);
         if(new_fd==-EMFILE)
         {
                 fput(file);
+                dbg(DBG_VFS,"VFS: Leave do_dup()\n");
                 return -EMFILE;
         }
         curproc->p_files[new_fd]=file;
+        dbg(DBG_VFS,"VFS: Leave do_dup()\n");
         return new_fd;
 }
 
@@ -191,14 +209,17 @@ do_dup(int fd)
 int
 do_dup2(int ofd, int nfd)
 {
+        dbg(DBG_VFS,"VFS: Enter do_dup2()\n");
         file_t* file=fget(ofd);
         if(file==NULL)
         {
+                dbg(DBG_VFS,"VFS: Leave do_dup2()\n");
                 return -EBADF;
         }
         if(nfd>NFILES||nfd<0)
         {
                 fput(file);
+                dbg(DBG_VFS,"VFS: Leave do_dup2()\n");
                 return -EBADF;
         }
         if(curproc->p_files[nfd]!=NULL&&nfd!=ofd)
@@ -206,6 +227,7 @@ do_dup2(int ofd, int nfd)
                 do_close(nfd);
         }
         curproc->p_files[nfd]=file;
+        dbg(DBG_VFS,"VFS: Leave do_dup2()\n");
         return nfd;
 }
 
@@ -242,16 +264,23 @@ do_dup2(int ofd, int nfd)
 int
 do_mknod(const char *path, int mode, unsigned devid)
 {
+        dbg(DBG_VFS,"VFS: Enter do_mknod()\n");
         /* validate mode type */
         if (!(S_ISCHR(mode) || (S_ISBLK(mode))))
+        {
+                dbg(DBG_VFS,"VFS: Leave do_mknod()\n");
                 return -EINVAL;
+        }
         /* get directory vnode*/
         size_t namelen;
         const char *name;
         vnode_t *dir;
         int error;
         if((error = dir_namev(path, &namelen, &name, NULL, &dir) ) != 0) /*ENOENT ENOTDIR ENAMETOOLONG*/
+        {
+                dbg(DBG_VFS,"VFS: Leave do_mknod()\n");
                 return error;
+        }
         vnode_t *result;
         if ((error = lookup(dir, name, namelen, &result)) != 0)
         {
@@ -259,6 +288,7 @@ do_mknod(const char *path, int mode, unsigned devid)
                 if (error == -ENOTDIR || dir->vn_ops->mknod==NULL||!S_ISDIR(dir->vn_mode))/* ?bug fixed here*/
                 {
                         vput(dir);
+                        dbg(DBG_VFS,"VFS: Leave do_mknod()\n");
                         return -ENOTDIR;
                 }
                 KASSERT(S_ISDIR(dir->vn_mode));
@@ -266,15 +296,18 @@ do_mknod(const char *path, int mode, unsigned devid)
                 if (error == -ENOENT)
                 {
                         int ret = dir->vn_ops->mknod(dir, name, namelen, mode, (devid_t)devid);
-                        vput(dir);/*?*/
+                        vput(dir);
+                        dbg(DBG_VFS,"VFS: Leave do_mknod()\n");
                         return ret;
                 }
                 
                 vput(dir);
+                dbg(DBG_VFS,"VFS: Leave do_mknod()\n");
                 return error;
         }
         vput(dir);
         vput(result);
+        dbg(DBG_VFS,"VFS: Leave do_mknod()\n");
         return -EEXIST;
 }
 
@@ -295,6 +328,7 @@ do_mknod(const char *path, int mode, unsigned devid)
 int
 do_mkdir(const char *path)
 {
+        dbg(DBG_VFS,"VFS: Enter do_mkdir()\n");
         size_t namelen;
         const char *name;
         vnode_t *dir_vnode;
@@ -304,21 +338,25 @@ do_mkdir(const char *path)
         /* Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG*/
         if((err = dir_namev(path, &namelen, &name, NULL, &dir_vnode) ) != 0) {
                 /* vput(dir_vnode); */
+                dbg(DBG_VFS,"VFS: Leave do_mkdir()\n");
                 return err;
         }
         /* Use lookup() to make sure it doesn't already exist.*/
         if(lookup(dir_vnode, name, namelen, &res_vnode) == 0) {
                 vput(dir_vnode);
                 vput(res_vnode);
+                dbg(DBG_VFS,"VFS: Leave do_mkdir()\n");
                 return -EEXIST;
         }
         if(dir_vnode -> vn_ops -> mkdir == NULL) {
             vput(dir_vnode);
+            dbg(DBG_VFS,"VFS: Leave do_mkdir()\n");
             return -ENOTDIR;
         }
         /* Call the dir's mkdir vn_ops. Return what it returns.*/
         err = dir_vnode -> vn_ops -> mkdir(dir_vnode, name, namelen);
         vput(dir_vnode);
+        dbg(DBG_VFS,"VFS: Leave do_mkdir()\n");
         return err;
 }
 
@@ -343,6 +381,7 @@ do_mkdir(const char *path)
 int
 do_rmdir(const char *path)
 {
+        dbg(DBG_VFS,"VFS: Enter do_rmdir()\n");  
         size_t namelen;
         const char *name;
         vnode_t *dir_vnode;
@@ -361,16 +400,19 @@ do_rmdir(const char *path)
         /* Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG */
         if((err = dir_namev(path, &namelen, &name, NULL, &dir_vnode) ) != 0) {
                 /* vput(dir_vnode); */
+                dbg(DBG_VFS,"VFS: Leave do_rmdir()\n");
                 return err;
         }
         if(dir_vnode -> vn_ops -> rmdir == NULL) {
             vput(dir_vnode);
+            dbg(DBG_VFS,"VFS: Leave do_rmdir()\n");
             return -ENOTDIR;
         }
         /* Call the containing dir's rmdir v_op. */
         err = dir_vnode -> vn_ops -> rmdir(dir_vnode, name, namelen);
         vput(dir_vnode);
         /* Need vput()? */
+        dbg(DBG_VFS,"VFS: Leave do_rmdir()\n");
         return err;
         /* NOT_YET_IMPLEMENTED("VFS: do_rmdir"); */
         /* return -1; */
@@ -397,18 +439,23 @@ int
 do_unlink(const char *path)
 {
         NOT_YET_IMPLEMENTED("VFS: do_unlink");
+        dbg(DBG_VFS,"VFS: Enter do_unlink()\n");
         /* get directory vnode*/
         size_t namelen;
         const char *name;
         vnode_t *dir;
         int error;
         if ((error = dir_namev(path, &namelen, &name, NULL, &dir) ) != 0) 
+        {
+                dbg(DBG_VFS,"VFS: Leave do_unlink()\n");
                 return error;
+        }
         /* check if path refers to a directory */
         vnode_t *result;
         if ((error = lookup(dir, name, namelen, &result)) != 0)
         {
                 vput(dir);
+                
                 return error;
         }
         if (!S_ISDIR(result->vn_mode))
@@ -417,11 +464,12 @@ do_unlink(const char *path)
                 vput(result);
                 return -EISDIR;
         }
-
+        
         /* reomve the result vnode from the directory*/
         int ret = dir->vn_ops->unlink(dir, name, namelen);
         vput(result);
         vput(dir);
+        dbg(DBG_VFS,"VFS: Leave do_unlink()\n");
         return ret;
 }
 
@@ -451,12 +499,15 @@ do_unlink(const char *path)
 int
 do_link(const char *from, const char *to)
 {
+        dbg(DBG_VFS,"VFS: Enter do_link()\n");
         /* get 'from' vnode */
         int error;
         vnode_t *from_vnode;
         if ((error = open_namev(from, 0, &from_vnode, NULL))!= 0) /*? flag=0*/
+        {
+                dbg(DBG_VFS,"VFS: Leave do_link()\n");
                 return error;
-
+        }
         /* get 'to' directory vnode*/
         size_t namelen;
         const char *name;
@@ -464,6 +515,7 @@ do_link(const char *from, const char *to)
         if ((error = dir_namev(to, &namelen, &name, NULL, &to_dir)!= 0))
         {
                 vput(from_vnode);
+                dbg(DBG_VFS,"VFS: Leave do_link()\n");
                 return error;
         }
 
@@ -474,6 +526,7 @@ do_link(const char *from, const char *to)
                 vput(from_vnode);
                 vput(to_dir);
                 vput(to_vnode);
+                dbg(DBG_VFS,"VFS: Leave do_link()\n");
                 return -EEXIST;
         }
 
@@ -481,6 +534,7 @@ do_link(const char *from, const char *to)
         {
                 vput(from_vnode);
                 vput(to_dir);
+                dbg(DBG_VFS,"VFS: Leave do_link()\n");
                 return -ENOTDIR;
         }
         /* call the destination dir's (to) link vn_ops; 'from_vnode' refcount++ in link()*/
@@ -489,6 +543,7 @@ do_link(const char *from, const char *to)
         /* vput the vnodes returned from open_namev and dir_namev */
         vput(from_vnode);
         vput(to_dir);
+        dbg(DBG_VFS,"VFS: Leave do_link()\n");
         return ret;
 }
 
@@ -505,12 +560,16 @@ do_rename(const char *oldname, const char *newname)
 {
         
          NOT_YET_IMPLEMENTED("VFS: do_rename");
-
+         dbg(DBG_VFS,"VFS: Enter do_rename()\n");
          /* link newname to oldname */
          int error;
          if ( (error = do_link(oldname, newname)) != 0)
+         {
+                dbg(DBG_VFS,"VFS: Leave do_rename()\n");
                 return error;
+         }
          /* unlink oldname */
+        dbg(DBG_VFS,"VFS: Leave do_rename()\n");
         return do_unlink(oldname);
 }
 
@@ -530,6 +589,7 @@ do_rename(const char *oldname, const char *newname)
 int
 do_chdir(const char *path)
 {
+        dbg(DBG_VFS,"VFS: Enter do_chdir()\n");
         /* Get the current process's cwd */
         vnode_t *old_cwd = curproc -> p_cwd;
         /* Down the refcount to the old cwd */
@@ -537,11 +597,13 @@ do_chdir(const char *path)
         int err;
         /* Up the refcount; flag!?; Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG */
         if((err = open_namev(path, 0, &new_cwd, NULL) ) != 0) {
+            dbg(DBG_VFS,"VFS: Leave do_chdir()\n");
             return err;
         }
         /* fput? */
         vput(old_cwd);
         curproc -> p_cwd = new_cwd;
+        dbg(DBG_VFS,"VFS: Leave do_chdir()\n");
         return 0;
         /* NOT_YET_IMPLEMENTED("VFS: do_chdir"); */
         /* return -1; */
@@ -565,14 +627,17 @@ do_chdir(const char *path)
 int
 do_getdent(int fd, struct dirent *dirp)
 {
+        dbg(DBG_VFS,"VFS: Enter do_getdent()\n");
         file_t *file=fget(fd);
         if(file==NULL)
         {
+                dbg(DBG_VFS,"VFS: Leave do_getdent()\n");
                 return -EBADF;
         }
         if(!S_ISDIR(file->f_vnode->vn_mode)||file->f_vnode->vn_ops->readdir==NULL)
         {
                 fput(file);
+                dbg(DBG_VFS,"VFS: Leave do_getdent()\n");
                 return -ENOTDIR;
         }
 
@@ -580,6 +645,7 @@ do_getdent(int fd, struct dirent *dirp)
         bytes=file->f_vnode->vn_ops->readdir(file->f_vnode,file->f_pos,dirp);
         do_lseek(fd,bytes,SEEK_CUR);
         fput(file);
+        dbg(DBG_VFS,"VFS: Leave do_getdent()\n");
         return bytes;
 }
 
@@ -596,18 +662,22 @@ do_getdent(int fd, struct dirent *dirp)
 int
 do_lseek(int fd, int offset, int whence)
 {
+        dbg(DBG_VFS,"VFS: Enter do_lseek()\n");
         if(!(whence==SEEK_SET||whence==SEEK_CUR||whence==SEEK_END))
         {
+                dbg(DBG_VFS,"VFS: Leave do_lseek()\n");
                 return -EINVAL;
         }
         else if(offset<0)
         {
+                dbg(DBG_VFS,"VFS: Leave do_lseek()\n");
                 return -EINVAL;
         }
 
         file_t *file=fget(fd);
         if(file==NULL)
         {
+                dbg(DBG_VFS,"VFS: Leave do_lseek()\n");
                 return -EBADF;
         }
 
@@ -625,6 +695,7 @@ do_lseek(int fd, int offset, int whence)
         }
         int ref=file->f_pos;
         fput(file);
+        dbg(DBG_VFS,"VFS: Leave do_lseek()\n");
         return ref;
 }
 
@@ -642,6 +713,7 @@ do_lseek(int fd, int offset, int whence)
 int
 do_stat(const char *path, struct stat *buf)
 {
+        dbg(DBG_VFS,"VFS: Enter do_stat()\n");
         size_t len;
         const char *name;
         vnode_t* par;
@@ -656,11 +728,14 @@ do_stat(const char *path, struct stat *buf)
                 vput(par);
                 chd->vn_ops->stat(chd,buf);
                 vput(chd);
+                dbg(DBG_VFS,"VFS: Leave do_stat()\n");
                 return 0;
             }
             vput(par);
+            dbg(DBG_VFS,"VFS: Leave do_stat()\n");
             return err;
         }
+        dbg(DBG_VFS,"VFS: Leave do_stat()\n");
         return err;
 }
 

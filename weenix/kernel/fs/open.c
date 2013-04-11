@@ -75,7 +75,7 @@ int
 do_open(const char *filename, int oflags)
 {
     NOT_YET_IMPLEMENTED("VFS: do_open");
-   
+    dbg(DBG_VFS,"VFS: Enter do_open()\n");
     /* get the least significant bit of the oflags, and validate the oflags.
      * O_WRONLY, O_RDONLY, O_RDWR is mutual exculsive and at least one of 
      * them should be included in oflags.
@@ -182,6 +182,6 @@ do_open(const char *filename, int oflags)
     {
 
     }*/
-    
+    dbg(DBG_VFS,"VFS: Leave do_open()\n");
     return fd;
 }
