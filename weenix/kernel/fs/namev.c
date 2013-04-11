@@ -136,15 +136,26 @@ open_namev(const char *pathname, int flag, vnode_t **res_vnode, vnode_t *base)
         size_t len;
         char *name;
         int err=0;
-        err=dir_namev(pathname,&len,&name,base,res_vnode);
+        vnode_t *par;
+        err=dir_namev(pathname,&len,&name,base,&par);
         if(!err)
         {
-            err=lookup(*res_vnode,name,len,res_vnode);
-            if(len>STR_MAX)
-                err= -ENAMETOOLONG;
-            if((err==-ENOENT)&&(O_CREAT&flag)&&((*res_vnode)->vn_ops->create!=NULL))
+            err=lookup(par,name,len,res_vnode);
+            if(!err)
             {
-                return (*res_vnode)->vn_ops->create(*res_vnode,name,len,res_vnode);
+                vput(par);
+                return 0;
+            }
+            else if((err==-ENOENT)&&(O_CREAT&flag)&&(par->vn_ops->create!=NULL))
+            {
+                par->vn_ops->create(par,name,len,res_vnode);
+                vput(par);
+                return 0;
+            }
+            else if(err!=0)
+            {
+                vput(par);
+                return err;
             }
         }
         return err;
