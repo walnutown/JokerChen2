@@ -488,7 +488,7 @@ do_chdir(const char *path)
 
         vnode_t *new_cwd;
         int err;
-        // Up the refcount!? flag!? Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG
+        // Up the refcount; flag!?; Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG
         if((err = open_namev(path, 0, &new_cwd, NULL) != 0)
             return err;
         curproc -> p_cwd = new_cwd;
