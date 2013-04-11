@@ -305,7 +305,7 @@ do_mkdir(const char *path)
         /*Use dir_namev() to find the vnode*/
         /* Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG*/
         if((err = dir_namev(path, &namelen, &name, NULL, &dir_vnode) != 0) {
-                vput(dir_vnode);
+                /* vput(dir_vnode); */
                 return err;
         }
         /* Use lookup() to make sure it doesn't already exist.*/
@@ -314,7 +314,7 @@ do_mkdir(const char *path)
                 vput(res_vnode);
                 return -EEXIST;
         }
-        if(dir_vnode -> vn_ops == NULL) {
+        if(dir_vnode -> vn_ops -> mkdir == NULL) {
             vput(dir_vnode);
             return -ENOTDIR;
         }
@@ -362,8 +362,12 @@ do_rmdir(const char *path)
         /* Use dir_namev() to find the vnode of the directory containing the dir to be removed. */
         /* Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG */
         if((err = dir_namev(path, &namelen, &name, NULL, &dir_vnode) != 0) {
-                vput(dir_vnode);
+                /* vput(dir_vnode); */
                 return err;
+        }
+        if(dir_vnode -> vn_ops -> rmdir == NULL) {
+            vput(dir_vnode);
+            return -ENOTDIR;
         }
         /* Call the containing dir's rmdir v_op. */
         err = dir_vnode -> vn_ops -> rmdir(dir_vnode, name, namelen);
@@ -520,15 +524,14 @@ do_chdir(const char *path)
         /* Get the current process's cwd */
         vnode_t *old_cwd = curproc -> p_cwd;
         /* Down the refcount to the old cwd */
-        /* fput? */
-        vput(old_cwd);
-
         vnode_t *new_cwd;
         int err;
         /* Up the refcount; flag!?; Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG */
         if((err = open_namev(path, 0, &new_cwd, NULL) != 0) {
             return err;
         }
+        /* fput? */
+        vput(old_cwd);
         curproc -> p_cwd = new_cwd;
         return 0;
         /* NOT_YET_IMPLEMENTED("VFS: do_chdir"); */
