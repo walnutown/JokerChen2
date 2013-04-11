@@ -76,8 +76,12 @@ do_open(const char *filename, int oflags)
 {
     NOT_YET_IMPLEMENTED("VFS: do_open");
    
-    
-    if (!(oflag == O_RDONLY || oflag == O_WRONLY || oflag == O_RDWR || (oflag == O_RDONLY | O_APPEND) || (oflag == O_WRONLY | O_APPEND) || (oflag == O_RDWR | O_APPEND)))
+    /* get the least significant bit of the oflags, and validate the oflags.
+     * O_WRONLY, O_RDONLY, O_RDWR is mutual exculsive and at least one of 
+     * them should be included in oflags.
+     */
+    int flag = oflags & 0x00f;
+    if (!(flag & O_WRONLY | flag & O_RDONLY | flag & O_RDWR ))
         return -EINVAL;
     /*-- 1. Get the next empty file descriptor --*/
     int fd = get_empty_fd(curproc);
@@ -124,16 +128,33 @@ do_open(const char *filename, int oflags)
      */
     vnode_t *res_vnode;
     int error;
-    if((error = open_namev(filename, oflags, &res_vnode, NULL)) != 0 )  
+    if((error = open_namev(filename, 0, &res_vnode, NULL)) != 0 )  
     {
         /* to do */
-        {ENAMETOOLONG}
-        {ENOENT, EISDIR, ENXIO}
+        
+        
 
         curproc->p_files[fd] = NULL;
         fput(f);
-        return 
+        return error;
     }
+
+    /* check if is writing to a directory */
+    if (S_ISDIR(res_vnode->vn_mode) && (oflags & O_WRONLY || oflags & O_RDWR) )
+        return -EISDIR;
+    
+    /* pathname refers to a device special file and no corresponding device exists */
+    if(S_ISCHR(res_vnode->vn_mode))
+    {
+        if(!res_vnode->vn_cdev = bytedev_lookup(res_vnode->vn_devid))
+        return -ENXIO;
+    }
+    if(S_ISBLK(res_vnode->vn_mode))
+    {
+        if(!res_vnode->vn_bdev = blockdev_lookup(res_vnode->vn_devid))
+        return -ENXIO;
+    }
+
 
     /*-- 6. Fill in the fields of the file_t --*/
     f->f_vnode = res_vnode;
