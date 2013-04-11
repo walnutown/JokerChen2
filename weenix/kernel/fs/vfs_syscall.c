@@ -259,8 +259,10 @@ do_mknod(const char *path, int mode, unsigned devid)
         {
                 /* check if result vnode is a directory vnode*/
                 if (error == -ENOTDIR || dir->vn_ops->mknod==NULL||!S_ISDIR(dir->vn_mode))/* ?bug fixed here*/
+                {
+                        vput(dir);
                         return -ENOTDIR;
-
+                }
                 KASSERT(S_ISDIR(dir->vn_mode));
                 /* path doesn't exist */
                 if (error == -ENOENT)
@@ -269,11 +271,11 @@ do_mknod(const char *path, int mode, unsigned devid)
                         vput(dir);/*?*/
                         return ret;
                 }
-                else 
-                        return error;
+                
+                vput(dir);
+                return error;
         }
-        else
-                return -EEXIST;
+        return -EEXIST;
 }
 
 /* Use dir_namev() to find the vnode of the dir we want to make the new
@@ -385,25 +387,28 @@ do_unlink(const char *path)
 {
         NOT_YET_IMPLEMENTED("VFS: do_unlink");
         /* get directory vnode*/
-        size_t *namelen;
+        size_t namelen;
         const char *name;
         vnode_t *dir;
         int error;
-        if ((error = dir_namev(path, namelen, &name, NULL, &dir) != 0) 
+        if ((error = dir_namev(path, &namelen, &name, NULL, &dir) != 0) 
                 return error;
         /* check if path refers to a directory */
         vnode_t *result;
-        if ((error = lookup(dir, name, *namelen, &result)) != 0)
+        if ((error = lookup(dir, name, namelen, &result)) != 0)
+        {
+                vput(dir);
                 return error;
+        }
         if (!S_ISDIR(result->vn_mode))
+        {
+                vput(dir);
                 return -EISDIR;
+        }
         
         /* reomve the result vnode from the directory*/
-        int ret = dir->vn_ops->unlink(dir, name, *namelen);
-
-        vput(result);
+        int ret = dir->vn_ops->unlink(dir, name, namelen);
         vput(dir);
-
         return ret;
 }
 
@@ -454,10 +459,9 @@ do_link(const char *from, const char *to)
         /* call the destination dir's (to) link vn_ops */
         int ret = dir->vn_ops->link(from_vnode, to_dir, name, namelen);
 
-        /*  vput the vnodes returned from open_namev and dir_namev */
+        /* vput the vnodes returned from open_namev and dir_namev */
         vput(from_vnode);
         vput(to_dir);
-
         return ret;
 }
 
