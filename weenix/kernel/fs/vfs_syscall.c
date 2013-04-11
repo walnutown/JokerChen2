@@ -140,15 +140,11 @@ do_close(int fd)
         fput(file);
         curproc->p_files[fd]=NULL;
 
-        fput(file);
-        /*
-        while(vn_refcount!=0)
+        while(file->f_refcount!=0)
         {
-                fput(fd);
-        }
-        */
+                fput(file);
+        } 
         return 0;
-        
 }
 
 /* To dup a file:
@@ -202,6 +198,11 @@ do_dup2(int ofd, int nfd)
         {
                 return -EBADF;
         }
+        if(nfd>NFILES||nfd<0)
+        {
+                fput(ofd);
+                return -EBADF;
+        }
         if(curproc->p_files[nfd]!=NULL&&nfd!=ofd)
         {
                 do_close(nfd);
@@ -251,7 +252,7 @@ do_mknod(const char *path, int mode, unsigned devid)
         const char *name;
         vnode_t *dir;
         int error;
-        if((error = dir_namev(path, &namelen, &name, NULL, &dir) != 0) 
+        if((error = dir_namev(path, &namelen, &name, NULL, &dir) != 0) /*ENOENT ENOTDIR ENAMETOOLONG*/
                 return error;
         vnode_t *result;
         if ((error = lookup(dir, name, namelen, &result)) != 0)
@@ -260,12 +261,10 @@ do_mknod(const char *path, int mode, unsigned devid)
                 if (error == -ENOTDIR || dir->vn_ops->mknod==NULL||!S_ISDIR(dir->vn_mode))/* ?bug fixed here*/
                         return -ENOTDIR;
 
-                KASSERT(S_ISDIR(result->vn_mode));
+                KASSERT(S_ISDIR(dir->vn_mode));
                 /* path doesn't exist */
                 if (error == -ENOENT)
                 {
-                        if(namelen>STR_MAX)
-                                return -ENAMETOOLONG; /*?we need to check length*/
                         int ret = dir->vn_ops->mknod(dir, name, namelen, mode, (devid_t)devid);
                         vput(dir);/*?*/
                         return ret;

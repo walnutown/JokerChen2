@@ -30,6 +30,10 @@ lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result)
         {
             return -ENOTDIR;
         }
+        else if(len>STR_MAX)
+        {
+            return -ENAMETOOLONG;
+        }
         else
         {
              /*don't have access to parent vnode*/
@@ -83,6 +87,9 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
                 if(pathname[i]=='\0')
                 {
                     res_vnode=*base;
+                    if(i-last>STR_MAX)
+                        return -ENAMETOOLONG;
+
                     namelen=i-last;
                     name=&pathname[last];
                     return 0;
