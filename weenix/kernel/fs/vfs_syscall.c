@@ -490,6 +490,7 @@ do_chdir(const char *path)
         // Get the current process's cwd
         vnode_t *old_cwd = curproc -> p_cwd;
         // Down the refcount to the old cwd
+        // fput?
         vput(old_cwd);
 
         vnode_t *new_cwd;
