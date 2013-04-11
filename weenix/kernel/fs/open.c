@@ -130,10 +130,6 @@ do_open(const char *filename, int oflags)
     int error;
     if((error = open_namev(filename, 0, &res_vnode, NULL)) != 0 )  
     {
-        /* to do */
-        
-        
-
         curproc->p_files[fd] = NULL;
         fput(f);
         return error;
@@ -141,18 +137,29 @@ do_open(const char *filename, int oflags)
 
     /* check if is writing to a directory */
     if (S_ISDIR(res_vnode->vn_mode) && (oflags & O_WRONLY || oflags & O_RDWR) )
+    {
+        curproc->p_files[fd] = NULL;
+        fput(f);
         return -EISDIR;
-    
+    }
     /* pathname refers to a device special file and no corresponding device exists */
     if(S_ISCHR(res_vnode->vn_mode))
     {
         if(!res_vnode->vn_cdev = bytedev_lookup(res_vnode->vn_devid))
-        return -ENXIO;
+        {
+            curproc->p_files[fd] = NULL;
+            fput(f);
+            return -ENXIO;
+        }
     }
     if(S_ISBLK(res_vnode->vn_mode))
     {
         if(!res_vnode->vn_bdev = blockdev_lookup(res_vnode->vn_devid))
-        return -ENXIO;
+        {
+            curproc->p_files[fd] = NULL;
+            fput(f);
+            return -ENXIO;
+        }
     }
 
 
