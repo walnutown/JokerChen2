@@ -136,8 +136,6 @@ do_close(int fd)
         {
                 return -EBADF;
         }
-
-        fput(file);
         curproc->p_files[fd]=NULL;
 
         while(file->f_refcount!=0)
@@ -200,7 +198,7 @@ do_dup2(int ofd, int nfd)
         }
         if(nfd>NFILES||nfd<0)
         {
-                fput(ofd);
+                fput(file);
                 return -EBADF;
         }
         if(curproc->p_files[nfd]!=NULL&&nfd!=ofd)
@@ -419,10 +417,10 @@ do_unlink(const char *path)
                 vput(result);
                 return -EISDIR;
         }
-        
+
         /* reomve the result vnode from the directory*/
         int ret = dir->vn_ops->unlink(dir, name, namelen);
-        /* result has been vput'ed in unlink */
+        vput(result);
         vput(dir);
         return ret;
 }
@@ -464,16 +462,27 @@ do_link(const char *from, const char *to)
         const char *name;
         vnode_t *to_dir;
         if ((error = dir_namev(to, &namelen, &name, NULL, &to_dir)!= 0))
+        {
+                vput(from_vnode);
                 return error;
+        }
 
         /* check if to_vnode has already existed */
         vnode_t *to_vnode;
         if (lookup(to_dir, name, namelen, &to_vnode) == 0)
         {
+                vput(from_vnode);
+                vput(to_dir);
                 vput(to_vnode);
                 return -EEXIST;
         }
 
+        if (dir->vn_ops->link == NULL)
+        {
+                vput(from_vnode);
+                vput(to_dir);
+                return -ENOTDIR;
+        }
         /* call the destination dir's (to) link vn_ops; 'from_vnode' refcount++ in link()*/
         int ret = dir->vn_ops->link(from_vnode, to_dir, name, namelen);
 
@@ -563,7 +572,7 @@ do_getdent(int fd, struct dirent *dirp)
         }
         if(!S_ISDIR(file->f_vnode->vn_mode)||file->f_vnode->vn_ops->readdir==NULL)
         {
-                fput(fd);
+                fput(file);
                 return -ENOTDIR;
         }
 
@@ -644,8 +653,12 @@ do_stat(const char *path, struct stat *buf)
             err=lookup(par,name,len,&chd);
             if(!err)
             {
-                return chd->vn_ops->stat(chd,buf);
+                vput(par);
+                chd->vn_ops->stat(chd,buf);
+                vput(chd);
+                return 0;
             }
+            vput(par);
             return err;
         }
         return err;
