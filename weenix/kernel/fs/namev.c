@@ -26,12 +26,15 @@
 int
 lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result)
 {
+        dbg(DBG_VFS,"VFS: Enter lookup()\n");
         if(dir->vn_ops->lookup==NULL)
         {
+            dbg(DBG_VFS,"VFS: Leave lookup(), return error ENOTDIR\n");
             return -ENOTDIR;
         }
         else if(len>STR_MAX)
         {
+            dbg(DBG_VFS,"VFS: Leave lookup(), return error ENAMETOOLONG\n");
             return -ENAMETOOLONG;
         }
         else
@@ -49,6 +52,7 @@ lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result)
              {
                 *result=dir->
              }*/
+            dbg(DBG_VFS,"VFS: Leave lookup()");
             return dir->vn_ops->lookup(dir,name,len,result);
         }
         
@@ -76,6 +80,7 @@ int
 dir_namev(const char *pathname, size_t *namelen, const char **name,
           vnode_t *base, vnode_t **res_vnode)
 {
+        dbg(DBG_VFS,"VFS: Enter dir_namev()");
         int err=0;
         vnode_t* basic;
         basic=base==NULL?curproc->p_cwd:base;
@@ -91,22 +96,27 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
                     if(i-last>STR_MAX)
                     {
                         vput(basic);
+                        dbg(DBG_VFS,"VFS: Leave dir_namev(), return error ENAMETOOLONG");
                         return -ENAMETOOLONG;
                     }
                     *res_vnode=basic;
                     *namelen=i-last;
                     *name=&pathname[last];
+                    dbg(DBG_VFS,"VFS: Leave dir_namev()");
                     return 0;
                 }
             }
 
             if(pathname[i]!='\0')
             {
-                if(i-last-1>STR_MAX)
+                if(i-last-1>STR_MAX) {
+                    dbg(DBG_VFS,"VFS: Leave dir_namev(), return error ENAMETOOLONG");
                     return -ENAMETOOLONG;
+                }
                 if((err=lookup(basic,pathname + last,i-last-1,res_vnode)))
                 {
                     vput(basic);
+                    dbg(DBG_VFS,"VFS: Leave dir_namev(), return error");
                     return err;
                 }
                 vput(basic);
@@ -118,6 +128,7 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
                 *res_vnode=basic;
                 namelen=0;
                 name=NULL;
+                dbg(DBG_VFS,"VFS: Leave dir_namev()");
                 return 0;
             }
         }while(1);
@@ -134,6 +145,7 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
 int
 open_namev(const char *pathname, int flag, vnode_t **res_vnode, vnode_t *base)
 {
+        dbg(DBG_VFS,"VFS: Enter open_namev()");
         size_t len;
         const char *name;
         int err=0;
@@ -144,6 +156,7 @@ open_namev(const char *pathname, int flag, vnode_t **res_vnode, vnode_t *base)
             err=lookup(par,name,len,res_vnode);
             if(!err)
             {
+                dbg(DBG_VFS,"VFS: Leave open_namev()");
                 vput(par);
                 return 0;
             }
@@ -151,11 +164,13 @@ open_namev(const char *pathname, int flag, vnode_t **res_vnode, vnode_t *base)
             {
                 par->vn_ops->create(par,name,len,res_vnode);
                 vput(par);
+                dbg(DBG_VFS,"VFS: Leave open_namev()");
                 return 0;
             }
             else if(err!=0)
             {
                 vput(par);
+                dbg(DBG_VFS,"VFS: Leave open_namev(), return error");
                 return err;
             }
         }

@@ -77,7 +77,7 @@ static context_t bootstrap_context;
 #define PROC_KILL_TEST              8
 #define PROC_EXIT_TEST              9
 
-static int CURRENT_TEST = PROC_EXIT_TEST;
+static int CURRENT_TEST = KSHELL_TEST;
 
 /**
  * This is the first real C function ever called. It performs a lot off
@@ -214,7 +214,14 @@ idleproc_run(int arg1, void *arg2)
 #ifdef __VFS__
         /* Once you have VFS remember to set the current working directory
          * of the idle and init processes */
+        curproc->p_cwd = vfs_root_vn;
+        initthr->kt_proc->p_cwd = vfs_root_vn;
+        vref(vfs_root_vn);
 
+        do_mkdir("/dev");
+        do_mknod("/dev/null",S_IFCHR, MKDEVID(1,0)); 
+        do_mknod("/dev/zero",S_IFCHR, MKDEVID(1,1));
+        do_mknod("/dev/tty0",S_IFCHR, MKDEVID(2,0)); 
         /* Here you need to make the null, zero, and tty devices using mknod */
         /* You can't do this until you have VFS, check the include/drivers/dev.h
          * file for macros with the device ID's you will need to pass to mknod */
@@ -616,6 +623,7 @@ writer(int arg1, void *arg2) {
 static void
 kshell_test() {
     dbg(DBG_CORE,"Test KSHELL_TEST\n");
+
     proc_t* pkshell = proc_create("kshell_test");
     kthread_t *tkshell = kthread_create(pkshell,kshell_run, 0, NULL);
     sched_make_runnable(tkshell);

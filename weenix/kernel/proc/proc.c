@@ -133,6 +133,17 @@ proc_create(char *name)
             process->p_pproc=curproc;
             list_insert_tail(&curproc->p_children,&process->p_child_link);
         }
+        process->p_cwd = vfs_root_vn;
+        if (process->p_cwd)
+        {
+            vref(process->p_cwd);
+        }
+        int fd=0;
+        while(!(fd<NFILES))
+        {
+            process->p_files[fd++] = NULL;
+        }
+
         return process;
 }
 
@@ -174,6 +185,14 @@ proc_cleanup(int status)
     {
     if(curproc->p_pid!=PID_IDLE)
     {
+        vput(curproc->p_cwd);
+
+        int fd = 0;
+        while( curproc->p_files[fd] )
+        {
+            do_close(fd);
+            fd++;
+        }
         /*wake up the waiting parent*/
         if(curproc->p_pproc->p_wait.tq_size!=0)
         {
