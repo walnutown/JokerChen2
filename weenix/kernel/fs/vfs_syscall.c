@@ -42,7 +42,11 @@ int
 do_read(int fd, void *buf, size_t nbytes)
 {
         file_t* file=fget(fd);
-        if(file==NULL||!(file->f_mode&FMODE_READ))
+        if(file==NULL)
+        {
+                return -EBADF;
+        }
+        if(!file->f_mode&FMODE_READ))
         {
                 fput(file);
                 return -EBADF;
@@ -79,7 +83,11 @@ int
 do_write(int fd, const void *buf, size_t nbytes)
 {
         file_t* file=fget(fd);
-        if(file==NULL||(!(file->f_mode&FMODE_WRITE)&&!(file->f_mode&FMODE_APPEND)))
+        if(file==NULL)
+        {
+                return -EBADF;
+        }
+        if(!(file->f_mode&FMODE_WRITE)&&!(file->f_mode&FMODE_APPEND))
         {
                 fput(file);
                 return -EBADF;
@@ -119,9 +127,9 @@ do_close(int fd)
         file_t* file=fget(fd);
         if(file==NULL)
         {
-                fput(file);
                 return -EBADF;
         }
+
         fput(file);
         curproc->p_files[fd]=NULL;
 
@@ -158,7 +166,6 @@ do_dup(int fd)
         file_t* file=fget(fd);
         if(file==NULL)
         {
-                fput(file);
                 return -EBADF;
         }
         int new_fd=get_empty_fd(curproc);
@@ -186,7 +193,6 @@ do_dup2(int ofd, int nfd)
         file_t* file=fget(ofd);
         if(file==NULL)
         {
-                fput(file);
                 return -EBADF;
         }
         if(curproc->p_files[nfd]!=NULL&&nfd!=ofd)
@@ -518,7 +524,6 @@ do_getdent(int fd, struct dirent *dirp)
         file_t *file=fget(fd);
         if(file==NULL)
         {
-                fput(fd);
                 return -EBADF;
         }
         if(!S_ISDIR(file->f_vnode->vn_mode)||file->f_vnode->vn_ops->readdir==NULL)
@@ -559,7 +564,6 @@ do_lseek(int fd, int offset, int whence)
         file_t *file=fget(fd);
         if(file==NULL)
         {
-                fput(file);
                 return -EBADF;
         }
 

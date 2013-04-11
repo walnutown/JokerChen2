@@ -23,7 +23,6 @@
  * 
  * Note: returns with the vnode refcount on *result incremented.
  */
- /**/
 int
 lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result)
 {
