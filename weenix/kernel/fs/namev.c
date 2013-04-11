@@ -77,8 +77,9 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
           vnode_t *base, vnode_t **res_vnode)
 {
         int err=0;
-        base=base==NULL?curproc->p_cwd:base;
-        base=pathname[0]=='/'?vfs_root_vn:base;
+        vnode_t* basic;
+        basic=base==NULL?curproc->p_cwd:base;
+        basic=pathname[0]=='/'?vfs_root_vn:basic;
         int last=pathname[0]=='/'?1:0;
         do
         {
@@ -86,12 +87,12 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
             {
                 if(pathname[i]=='\0')
                 {
-                    res_vnode=*base;
                     if(i-last>STR_MAX)
                     {
-                        vput(base);
+                        vput(basic);
                         return -ENAMETOOLONG;
                     }
+                    res_vnode=*basic;
                     namelen=i-last;
                     name=&pathname[last];
                     return 0;
@@ -102,17 +103,17 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
             {
                 if(i-last-1>STR_MAX)
                     return -ENAMETOOLONG;
-                if(err=lookup(base,pathname[last],i-last-1,res_vnode))
+                if(err=lookup(basic,pathname[last],i-last-1,res_vnode))
                 {
                     return err;
                 }
-                vput(base);
+                vput(basic);
                 last=i;
-                base=*res_vnode;
+                basic=*res_vnode;
             }
             else/*handle*/
             {
-                res_vnode=*base;
+                res_vnode=*basic;
                 namelen=0;
                 name=NULL;
                 return 0;
