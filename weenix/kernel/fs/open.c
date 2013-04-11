@@ -161,10 +161,9 @@ do_open(const char *filename, int oflags)
             return -ENXIO;
         }
     }
-
-
     /*-- 6. Fill in the fields of the file_t --*/
     f->f_vnode = res_vnode;
+    f->f_pos = 0;
     
-        return fd;
+    return fd;
 }
