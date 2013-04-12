@@ -77,7 +77,9 @@ static context_t bootstrap_context;
 #define PROC_KILL_TEST              8
 #define PROC_EXIT_TEST              9
 
-static int CURRENT_TEST = KSHELL_TEST;
+#define VFS_TEST                    10
+
+static int CURRENT_TEST = VFS_TEST;
 
 /**
  * This is the first real C function ever called. It performs a lot off
@@ -336,6 +338,8 @@ static void       proc_exit_run();
 static void      *exit_test(int arg1, void *arg2);
 static void      *normal_test_run(int arg1, void *arg2);
 
+static void       vfs_test_run();
+
 static void *
 initproc_run(int arg1, void *arg2)
 {
@@ -372,6 +376,9 @@ initproc_run(int arg1, void *arg2)
             break;
         case PROC_EXIT_TEST:
             proc_exit_run();
+            break;
+        case VFS_TEST:
+            vfs_test_run();
             break;
      }
 
@@ -839,4 +846,134 @@ hard_shutdown()
         vt_print_shutdown();
 #endif
         __asm__ volatile("cli; hlt");
+}
+
+
+/*******************************************************************************************
+ * Test for kernel assignment 2
+ *******************************************************************************************/
+ #include <errno.h>
+ #include <fs/file.h>
+ #include <fs/vnode.h>
+ /* Some helpful strings */
+
+#define LONGNAME "supercalifragilisticexpialidocious" /* Longer than NAME_LEN */
+
+#define TESTSTR                                                                                 \
+        "Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do "                     \
+        "eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim "         \
+        "veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo "      \
+        "consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum "     \
+        "dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, "     \
+        "sunt in culpa qui officia deserunt mollit anim id est laborum."
+
+#define SHORTSTR "Quidquid latine dictum, altum videtur"
+
+/* declare char string of 'root durectiry' */
+static char* root_dir;
+
+/****************************** Test Helper *********************************/
+/* create a file with the specified name */
+static void
+create_file(const char *filename)      
+{                                                                
+    dbg(DBG_VFS, "****************Enter creat_file().\n");
+    int fd;                                                                     
+    if (( fd = do_open(filename, O_RDONLY|O_CREAT )) )
+    {             
+            int ret;
+            if ( (ret = do_close(fd)) == 0 )
+                dbg(DBG_DISK, "****************Close the created file successfully and leave creat_file().\n");
+            else
+                dbg(DBG_DISK, "****************Failed to close the created file  and leave creat_file(), error: %d\n", ret);                                                
+    }
+
+    dbg(DBG_DISK, "****************Failed to create file  and leave creat_file(), error: %d\n", fd);                                                                             
+}
+
+static void
+vfstest_start(void)
+{
+    int err;
+
+    root_dir = "testDir";
+    do {
+            err = do_mkdir(root_dir);
+    } while (err != 0);
+    dbg(DBG_DISK, "****************Created test root directory: ./%s\n", root_dir);
+}
+
+/****************************** Syscall Function Test *********************************/
+/* vfs test of do_stat */
+static void
+vfstest_stat(void)
+{
+    int fd;
+    struct stat s;
+
+    /*KASSERT( !do_mkdir("stat")    );    
+    KASSERT( !do_chdir("stat")    );
+    KASSERT( !do_stat(".", &s)    );
+    KASSERT( S_ISDIR(s.st_mode)   );*/
+
+    create_file("file");
+
+    KASSERT( !do_stat("file", &s) );
+    KASSERT( S_ISREG(s.st_mode)   );
+
+    /* file size is correct */
+    fd = do_open("file", O_RDWR);
+    file_t *file = fget(fd);
+    fput(file);
+    dbg(DBG_DISK, "**************vnode reference count: ./%d\n", file -> f_vnode -> vn_refcount);
+    do_write(fd, "foobar", 6);
+    dbg(DBG_DISK, "**************vnode reference count: ./%d\n", file -> f_vnode -> vn_refcount);
+    KASSERT( !do_stat("file", &s)  );
+    KASSERT( s.st_size == 6       );
+    do_close(fd);
+    dbg(DBG_DISK, "**************vnode reference count: ./%d\n", file -> f_vnode -> vn_refcount);
+
+
+    /* no entry test */
+    KASSERT( do_stat("noent", &s) == -ENOENT );
+
+    do_chdir("..");
+}
+
+/****************************** Main *********************************/
+static void *
+vfs_test() 
+{
+    /* initialize processes and threads*/
+    /* dbg(DBG_VFS,"VFS: Begin VFS_TEST\n");
+    proc_t * proc1, * proc2;
+    kthread_t * kthr1, * kthr2;
+    kmutex_init(&mtx);
+    proc1 = proc_create("proc1");
+    kthr1=kthread_create(proc1,deadlock,0,NULL);
+    proc2 = proc_create("proc2");
+    kthr2=kthread_create(proc2,deadlock,0,NULL);
+    sched_make_runnable(kthr1);
+    sched_make_runnable(kthr2); */
+    
+    /* begin vfs test*/
+    vfstest_start();
+    do_chdir(root_dir);
+    vfstest_stat();
+    return 0;
+}
+
+
+static void
+vfs_test_run() {
+    dbg(DBG_CORE,"Test VFS_TEST\n");
+    pid_t child=0;
+    int status=0;
+    proc_t * process=proc_create("vfs_process");
+    kthread_t* thread=kthread_create(process,vfs_test,0,NULL);
+    sched_make_runnable(thread);
+
+    child=do_waitpid(-1,0,&status);
+    KASSERT(status==0);
+    dbg_print("process %d return.\n",(int)child);
 }
