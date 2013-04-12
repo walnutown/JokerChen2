@@ -4,7 +4,7 @@ This test assignment is evenly splited in our group.
 Split:
 
 Yu Sun(sun812@usc.edu):  		        100/3 		  vfs_syscall.c,vnode.c
-Heguang Liu(heguangl@usc.edu):		  100/3		  namev.c, vnode.c,vfs_syscall.c
+Heguang Liu(heguangl@usc.edu):		    100/3		  namev.c, vnode.c,vfs_syscall.c
 Tao Hu(taohu@usc.edu):			        100/3		  testcase, open.c,vfs_syscall.c
 
 Tips to test out kernel:
