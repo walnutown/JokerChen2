@@ -994,7 +994,7 @@ vfstest_stat(void)
 {
     int fd;
     struct stat s;
-    dbg(DBG_USER, "//---------------- Create \"stat\" directory---------------------------------------------//\n");
+    dbg(DBG_USER, "//---------------- VFSTEST_STAT Begins---------------------------------------------//\n");
     KASSERT( !do_mkdir("stat")    ); 
     display_node_create ("stat");  
     KASSERT( !do_chdir("stat")    );
@@ -1031,21 +1031,27 @@ vfstest_stat(void)
 static void
 vfstest_mkdir(void)
 {
+    dbg(DBG_USER, "//---------------- VFSTEST_MKDIR Begins---------------------------------------------//\n");        
         KASSERT( !do_mkdir("mkdir") );
-        KASSERT( !do_chdir("mkdir") );
+    display_node_create("open");
+    KASSERT( !do_chdir("mkdir") );
 
         /* mkdir an existing file or directory */
+    dbg(DBG_USER, "//---------------- mkdir an existing file or directory-----------------------//\n");
         create_file("file");
+    display_node_create("file");
         KASSERT( do_mkdir("file")       == -EEXIST      );
-        KASSERT( !do_mkdir("dir"));
+        KASSERT( !do_mkdir("dir")           );
+    display_node_create("dir");
         KASSERT( do_mkdir("dir")        == -EEXIST      );
 
-        vnode_t *node_dir = vget(vfs_root_vn->vn_fs, 8);
+        /*vnode_t *node_dir = vget(vfs_root_vn->vn_fs, 8);
         vput(node_dir);
-        dbg(DBG_DISK,"VFS:After do_mkdir(dir), vnode 8 reference count = %d\n", node_dir->vn_refcount);
+        dbg(DBG_DISK,"VFS:After do_mkdir(dir), vnode 8 reference count = %d\n", node_dir->vn_refcount);*/
 
 
         /* mkdir an invalid path */
+    dbg(DBG_USER, "//----------------  mkdir an invalid path-----------------------------------//\n");
         KASSERT( do_mkdir(LONGNAME)     == -ENAMETOOLONG);
         KASSERT( do_mkdir("file/dir")   == -ENOTDIR     );
         KASSERT( do_mkdir("noent/dir")  == -ENOENT      );
@@ -1055,24 +1061,31 @@ vfstest_mkdir(void)
         KASSERT( do_rmdir(".")          == -EINVAL      );
         KASSERT( do_rmdir("..")         == -ENOTEMPTY   );
         KASSERT( do_rmdir("dir/.")      == -EINVAL      );
-        dbg(DBG_DISK,"VFS: EINVAL :After do_rmdir(dir/.), vnode 8 reference count = %d\n", node_dir->vn_refcount);
+        /*dbg(DBG_DISK,"VFS: EINVAL :After do_rmdir(dir/.), vnode 8 reference count = %d\n", node_dir->vn_refcount);*/
         KASSERT( do_rmdir("dir/..")     == -ENOTEMPTY   );
-        dbg(DBG_DISK,"VFS: ENOTEMPTY :After do_rmdir(dir/..), vnode 8 reference count = %d\n", node_dir->vn_refcount);
+        /*dbg(DBG_DISK,"VFS: ENOTEMPTY :After do_rmdir(dir/..), vnode 8 reference count = %d\n", node_dir->vn_refcount);*/
         KASSERT( do_rmdir("noent/.")    == -ENOENT      );
         KASSERT( do_rmdir("noent/..")   == -ENOENT      );
 
         /* unlink and rmdir the inappropriate types */
+    dbg(DBG_USER, "//----------------  unlink and rmdir the inappropriate types -----------------------//\n");
         KASSERT( do_rmdir("file")       == -ENOTDIR     );
         KASSERT( do_unlink("dir")       == -EISDIR      );
-        dbg(DBG_DISK,"VFS: EISDIR: After do_unlink(dir), vnode 8 reference count = %d\n", node_dir->vn_refcount);
-        /* remove non-empty directory */
+        /*dbg(DBG_DISK,"VFS: EISDIR: After do_unlink(dir), vnode 8 reference count = %d\n", node_dir->vn_refcount);*/
+        
+    /* remove non-empty directory */
+    dbg(DBG_USER, "//----------------  remove non-empty directory ------------------------------------//\n");
         create_file("dir/file");
+    display_node_create("dir/file");
         KASSERT( do_rmdir("dir")        == -ENOTEMPTY   );
-        dbg(DBG_DISK,"VFS: ENOTEMPTY: After do_rmdir(dir), vnode 8 reference count = %d\n", node_dir->vn_refcount);
-        /* remove empty directory */
+        /*dbg(DBG_DISK,"VFS: ENOTEMPTY: After do_rmdir(dir), vnode 8 reference count = %d\n", node_dir->vn_refcount);*/
+        
+    /* remove empty directory */
+    dbg(DBG_USER, "//----------------  remove empty directory ------------------------------------//\n");
+    display_node_remove("dir/file");
         KASSERT( !do_unlink("dir/file"));
         KASSERT( !do_rmdir("dir"));
-        dbg(DBG_DISK,"VFS: sucess: After do_rmdir(dir), vnode 8 reference count = %d\n", node_dir->vn_refcount);
+        /*dbg(DBG_DISK,"VFS: sucess: After do_rmdir(dir), vnode 8 reference count = %d\n", node_dir->vn_refcount);*/
         KASSERT( !do_chdir(".."));
 }
 
@@ -1080,7 +1093,7 @@ static void
 vfstest_chdir(void)
 {
 #define CHDIR_TEST_DIR "chdir"
-
+    dbg(DBG_USER, "//---------------- VFSTEST_CHDIR Begins ---------------------------------------------//\n");
         struct stat ssrc, sdest, sparent, sdir;
         struct stat rsrc, rdir;
 
@@ -1122,10 +1135,11 @@ static void
 vfstest_paths(void)
 {
 #define PATHS_TEST_DIR "paths"
-
+    dbg(DBG_USER, "//---------------- VFSTEST_PATHS Begins---------------------------------------------//\n");
         struct stat s;
 
         KASSERT( !do_mkdir(PATHS_TEST_DIR)      );
+    display_node_create(PATHS_TEST_DIR);
         KASSERT( !do_chdir(PATHS_TEST_DIR)      );
 
         KASSERT( do_stat("", &s) == -EINVAL     );
@@ -1218,7 +1232,7 @@ vfstest_open(void)
         char buf[OPEN_BUFSIZE];
         int fd, fd2;
         struct stat s;
-    dbg(DBG_USER, "//---------------- Create \"open\" directory---------------------------------------------//\n");
+    dbg(DBG_USER, "//---------------- VFSTEST_OPEN Begins---------------------------------------------//\n");
         KASSERT( !do_mkdir("open")      );
     display_node_create("open");
         KASSERT( !do_chdir("open")      );
@@ -1304,21 +1318,129 @@ vfstest_open(void)
         KASSERT( !do_chdir("..")                );
 }
 
+static void
+vfstest_read(void)
+{
+#define READ_BUFSIZE 256
+    dbg(DBG_USER, "//---------------- VFSTEST_READ Begins---------------------------------------------//\n");
+        int fd, ret;
+        char buf[READ_BUFSIZE];
+        struct stat s;
+        KASSERT( !do_mkdir("read")                          );
+    display_node_create("read");
+        KASSERT( !do_chdir("read")                          );
+
+        /* Can read and write to a file */
+    dbg(DBG_USER, "//---------------- FILE: \"file01\" : Can read and write to a file ----------//\n");
+        fd  = do_open("file01", O_RDWR | O_CREAT);
+        ret = do_write(fd, "hello", 5);
+        KASSERT(    5 == ret                                );
+        ret = do_lseek(fd, 0, SEEK_SET);
+        KASSERT(    0 == ret                                );
+        read_fd(fd, READ_BUFSIZE, "hello");
+        KASSERT( !do_close(fd)                              );
+
+        /* cannot read from a directory */
+    dbg(DBG_USER, "//---------------- DIR: \"dir01\" : Cannot read from a directory ----------//\n");
+        KASSERT( !do_mkdir("dir01")                         );
+        fd = do_open("dir01", O_RDONLY);
+        KASSERT( do_read(fd, buf, READ_BUFSIZE)  == -EBADF  );
+        KASSERT( !do_close(fd)                              );
+
+        /* Can seek to beginning, middle, and end of file */
+    dbg(DBG_USER, "//---------------- FILE: \"file02\": Can seek to beginning, middle, and end of file ----------//\n");
+        fd = do_open("file02", O_RDWR | O_CREAT);
+        KASSERT( !do_write(fd, "hello", 5)                  );
+
+
+
+        KASSERT( do_lseek(fd, 0, SEEK_CUR)  == 5        );
+        read_fd(fd, 10, "");
+        KASSERT( do_lseek(fd, -1, SEEK_CUR) == 4        );
+        read_fd(fd, 10, "o");
+        KASSERT( do_lseek(fd, 2, SEEK_CUR)  == 7        );
+        read_fd(fd, 10, "");
+        KASSERT( do_lseek(fd, -8, SEEK_CUR) == -EINVAL      );
+
+        KASSERT( do_lseek(fd, 0, SEEK_SET)  == 0        );
+        read_fd(fd, 10, "hello");
+        KASSERT( do_lseek(fd, 3, SEEK_SET)  == 3        );
+        read_fd(fd, 10, "lo");
+        KASSERT( do_lseek(fd, 7, SEEK_SET)  == 7        );
+        read_fd(fd, 10, "");
+        KASSERT( do_lseek(fd, -1, SEEK_SET) == -EINVAL      );
+
+        KASSERT( do_lseek(fd, 0, SEEK_END)  == 5        );
+        read_fd(fd, 10, "");
+        KASSERT( do_lseek(fd, -2, SEEK_END) == 3        );
+        read_fd(fd, 10, "lo");
+        KASSERT( do_lseek(fd, 3, SEEK_END)  == 8        );
+        read_fd(fd, 10, "");
+        KASSERT( do_lseek(fd, -8, SEEK_END) == -EINVAL      );
+
+        KASSERT( do_lseek(fd, 0, SEEK_SET + SEEK_CUR + SEEK_END) == -EINVAL );
+        KASSERT( !do_close(fd)                  );
+
+        /* O_APPEND works properly */
+    dbg(DBG_USER, "//---------------- FILE: \"file03\":  O_APPEND works properly ----------------------//\n");
+        create_file("file03");
+        fd = do_open("file03", O_RDWR);
+        test_fpos(fd, 0);
+        do_write(fd, "hello", 5);
+        test_fpos(fd, 5);
+        KASSERT( !do_close(fd)  );
+
+        fd = do_open("file03", O_RDWR | O_APPEND);
+        test_fpos(fd, 0);
+        do_write(fd, "hello", 5);
+        test_fpos(fd, 10);
+
+        do_lseek(fd, 0, SEEK_SET);
+        test_fpos(fd, 0);
+        read_fd(fd, 10, "hellohello");
+        do_lseek(fd, 5, SEEK_SET);
+        test_fpos(fd, 5);
+        do_write(fd, "again", 5);
+        test_fpos(fd, 15);
+        do_lseek(fd, 0, SEEK_SET);
+        test_fpos(fd, 0);
+        read_fd(fd, 15, "hellohelloagain");
+        KASSERT( !do_close(fd)  );
+
+        /* seek and write beyond end of file */
+    dbg(DBG_USER, "//---------------- FILE: \"file04\":  seek and write beyond end of file ----------------------//\n");
+        create_file("file04");
+        fd = do_open("file04", O_RDWR);
+        do_write(fd, "hello", 5);
+        test_fpos(fd, 5);
+        KASSERT( do_lseek(fd, 10, SEEK_SET) == 10       );
+        do_write(fd, "again", 5);
+        KASSERT( !do_stat("file04", &s)                 );
+        KASSERT( s.st_size == 15                        );
+        KASSERT( do_lseek(fd, 0, SEEK_SET)  == 0        );
+        KASSERT( 15 == do_read(fd, buf, READ_BUFSIZE)   );
+        KASSERT( 0  == memcmp(buf, "hello\0\0\0\0\0again", 15));
+        KASSERT( !do_close(fd)  );
+
+        KASSERT( !do_chdir("..")                        );
+}
+
 
 
 /****************************** Main *********************************/
 static void *
 vfs_test() 
 {   
-    /* begin vfs test*/
-    vfstest_start();
-    do_chdir(root_dir);
-    vfstest_stat(); 
+        /* begin vfs test*/
+        vfstest_start();
+        do_chdir(root_dir);
+        /*vfstest_stat(); */
     /*vfstest_mkdir();*/
     /* vfstest_chdir(); */
-    /*vfstest_paths();*/
-    vfstest_fd();
-    vfstest_open();
+        /*vfstest_paths();*/
+        /*vfstest_fd();*/
+        /*vfstest_open();*/
+    vfstest_read();
     return 0;
 }
 
