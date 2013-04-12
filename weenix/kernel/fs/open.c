@@ -156,6 +156,7 @@ do_open(const char *filename, int oflags)
     {
         curproc->p_files[fd] = NULL;
         fput(f);
+    vput(res_vnode);
         dbg(DBG_VFS,"VFS: Exit do_open(), -EISDIR;");
         return -EISDIR;
     }
@@ -166,6 +167,7 @@ do_open(const char *filename, int oflags)
         {
             curproc->p_files[fd] = NULL;
             fput(f);
+        vput(res_vnode);
             dbg(DBG_VFS,"VFS: Exit do_open(), -ENXIO 1;");
             return -ENXIO;
         }
@@ -176,6 +178,7 @@ do_open(const char *filename, int oflags)
         {
             curproc->p_files[fd] = NULL;
             fput(f);
+        vput(res_vnode);
             dbg(DBG_VFS,"VFS: Exit do_open(), -ENXIO 2;");
             return -ENXIO;
         }

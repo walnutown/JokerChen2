@@ -79,7 +79,7 @@ static context_t bootstrap_context;
 
 #define VFS_TEST                    10
 
-static int CURRENT_TEST = KSHELL_TEST;
+static int CURRENT_TEST = VFS_TEST;
 
 /**
  * This is the first real C function ever called. It performs a lot off
@@ -970,6 +970,23 @@ makedirs(const char *dir)
         return 0;
 }
 
+
+static void
+display_node_create(const char *filename)
+{
+    struct stat s;  
+    do_stat(filename, &s);
+    dbg(DBG_USER, "\"%s\" has been created, ino: %d\n", filename, s.st_ino);
+}
+
+static void
+display_node_remove(const char *filename)
+{
+    struct stat s;  
+    do_stat(filename, &s);
+    dbg(DBG_USER, "\"%s\" is to be removed, ino: %d\n", filename, s.st_ino);
+}
+
 /****************************** Syscall Function Test *********************************/
 /* vfs test of do_stat */
 static void
@@ -977,8 +994,9 @@ vfstest_stat(void)
 {
     int fd;
     struct stat s;
-
-    KASSERT( !do_mkdir("stat")    );    
+    dbg(DBG_USER, "//---------------- Create \"stat\" directory---------------------------------------------//\n");
+    KASSERT( !do_mkdir("stat")    ); 
+    display_node_create ("stat");  
     KASSERT( !do_chdir("stat")    );
     KASSERT( !do_stat(".", &s)    );
     KASSERT( S_ISDIR(s.st_mode)   );
@@ -1191,6 +1209,103 @@ vfstest_fd(void)
 }
 
 
+
+static void
+vfstest_open(void)
+{
+#define OPEN_BUFSIZE 5
+
+        char buf[OPEN_BUFSIZE];
+        int fd, fd2;
+        struct stat s;
+    dbg(DBG_USER, "//---------------- Create \"open\" directory---------------------------------------------//\n");
+        KASSERT( !do_mkdir("open")      );
+    display_node_create("open");
+        KASSERT( !do_chdir("open")      );
+
+        /* No invalid combinations of O_RDONLY, O_WRONLY, and O_RDWR.  Since
+         * O_RDONLY is stupidly defined as 0, the only invalid possible
+         * combination is O_WRONLY|O_RDWR. */
+    dbg(DBG_USER, "//----------------FILE: file01 : INVALID flag------------------------------------------------//\n");
+        KASSERT( do_open("file01", O_WRONLY | O_RDWR | O_CREAT) == -EINVAL      );
+        KASSERT( do_open("file01", O_RDONLY | O_RDWR | O_WRONLY | O_CREAT) == -EINVAL   );
+
+        /* Cannot open nonexistent file without O_CREAT */
+    dbg(DBG_USER, "//---------------- FILE: file02 : Cannot open nonexistent file without O_CREAT ---------------//\n");
+        KASSERT( do_open("file02", O_WRONLY) == -ENOENT     );
+        fd = do_open("file02", O_RDONLY | O_CREAT);
+    display_node_create("file02");
+        KASSERT( !do_close(fd)                  );
+    display_node_remove("file02");
+        KASSERT( !do_unlink("file02")               );
+        KASSERT( do_stat("file02", &s)  == -ENOENT      );
+
+        /* Cannot create invalid files */
+    dbg(DBG_USER, "//----------------FILE: tmpfile : Cannot create invalid files -------------------------------//\n");
+        create_file("tmpfile");
+    display_node_create("tmpfile");
+        KASSERT( do_open("tmpfile/test", O_RDONLY | O_CREAT) == -ENOTDIR    );
+        KASSERT( do_open("noent/test", O_RDONLY | O_CREAT)   == -ENOENT     );
+        KASSERT( do_open(LONGNAME, O_RDONLY | O_CREAT)       == -ENAMETOOLONG   );
+
+        /* Cannot write to readonly file */
+    dbg(DBG_USER, "//----------------FILE: file03 : Cannot write to readonly file ------------------------------//\n");
+        fd = do_open("file03", O_RDONLY | O_CREAT);
+    display_node_create("file03");
+        KASSERT( do_write(fd, "hello", 5) == -EBADF         );
+        KASSERT( !do_close(fd)                      );
+
+        /* Cannot read from writeonly file.  Note that we do not unlink() it
+         * from above, so we do not need O_CREAT set. */
+    dbg(DBG_USER, "//----------------FILE: file03 : Cannot read from writeonly file ---------------------------//\n");
+        fd = do_open("file03", O_WRONLY);
+        KASSERT( do_read(fd, buf, OPEN_BUFSIZE) == -EBADF       );
+        KASSERT( !do_close(fd)                      );
+    display_node_remove("file03");
+        KASSERT( !do_unlink("file03")                   );
+        KASSERT( do_stat("file03", &s)          == -ENOENT  );
+
+        /* Lowest file descriptor is always selected. */
+    dbg(DBG_USER, "//---------------- FILE: \"file04\" : Lowest file descriptor is always selected -----------//\n");
+        fd  = do_open("file04", O_RDONLY | O_CREAT);
+    display_node_create("file04");
+        fd2 = do_open("file04", O_RDONLY);
+        KASSERT( fd2 > fd                   );
+        KASSERT( !do_close(fd)                  );
+        KASSERT( !do_close(fd2)                 );
+        fd2 = do_open("file04", O_WRONLY);
+        KASSERT( fd2 == fd );
+        KASSERT( !do_close(fd2)                 );
+    display_node_remove("file04");
+        KASSERT( !do_unlink("file04")               );
+        KASSERT( do_stat("file04", &s)      == -ENOENT      );
+
+        /* Cannot open a directory for writing */
+    dbg(DBG_USER, "//---------------- DIR: \"file05\" : Cannot open a directory for writing ----------//\n");
+        KASSERT( !do_mkdir("file05") );
+    display_node_create("file05");                      
+        KASSERT( do_open("file05", O_WRONLY)    == -EISDIR  );
+        KASSERT( do_open("file05", O_RDWR)      == -EISDIR  );
+    display_node_remove("file05");
+        KASSERT( !do_rmdir("file05")                );
+
+        /* Cannot unlink a directory */
+    dbg(DBG_USER, "//---------------- DIR: \"file06\" : Cannot unlink a directory -------------------//\n");
+        KASSERT( !do_mkdir("file06") );
+    display_node_create("file06");                  
+        KASSERT( do_unlink("file06")        == -EISDIR  );
+    display_node_remove("file06");
+        KASSERT( !do_rmdir("file06")                );
+
+        /* Cannot unlink a non-existent file */
+    dbg(DBG_USER, "//---------------- FILE: \"file07\" : Cannot unlink a non-existent file ----------//\n");
+        KASSERT( do_unlink("file07") == -ENOENT         );
+
+        KASSERT( !do_chdir("..")                );
+}
+
+
+
 /****************************** Main *********************************/
 static void *
 vfs_test() 
@@ -1198,11 +1313,12 @@ vfs_test()
     /* begin vfs test*/
     vfstest_start();
     do_chdir(root_dir);
-    vfstest_stat();
-    vfstest_mkdir();
-    vfstest_chdir();
+    vfstest_stat(); 
+    /*vfstest_mkdir();*/
+    /* vfstest_chdir(); */
     /*vfstest_paths();*/
-    /*vfstest_fd();*/
+    vfstest_fd();
+    vfstest_open();
     return 0;
 }
 
@@ -1220,4 +1336,3 @@ vfs_test_run() {
     KASSERT(status==0);
     dbg_print("process %d return.\n",(int)child);
 }
-
