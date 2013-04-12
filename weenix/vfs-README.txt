@@ -8,7 +8,6 @@ Heguang Liu(heguangl@usc.edu):		    100/3		  namev.c, vnode.c,vfs_syscall.c
 Tao Hu(taohu@usc.edu):			        100/3		  testcase, open.c,vfs_syscall.c
 
 Tips to test out kernel:
-
 There is a global variable static int CURRENT_TEST is kmain.c
 when you assign different mode to it, different test method get executed, the execute mode showed below:
 
