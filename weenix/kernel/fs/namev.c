@@ -172,9 +172,11 @@ open_namev(const char *pathname, int flag, vnode_t **res_vnode, vnode_t *base)
                 dbg(DBG_VFS,"VFS: Leave open_namev(), open file\n");
                 return 0;
             }
-            else if((err==-ENOENT)&&(O_CREAT&flag)&&(par->vn_ops->create!=NULL))
+            else if((err==-ENOENT)&&flag&&(par->vn_ops->create!=NULL))
             {
-                KASSERT(NULL != par->vn_ops->create(par,name,len,res_vnode));  
+                int ret = par->vn_ops->create(par,name,len,res_vnode);
+                dbg(DBG_VFS,"VFS: In open_namev(), ret=%d\n", ret);
+                /*KASSERT(NULL != ret);  */
                 vput(par);
                 dbg(DBG_VFS,"VFS: Leave open_namev(), file not exist, create file\n");
                 return 0;
@@ -183,12 +185,12 @@ open_namev(const char *pathname, int flag, vnode_t **res_vnode, vnode_t *base)
             {
                 vput(par);
 
-                dbg(DBG_VFS,"VFS: Leave open_namev(), return error\n");
+                dbg(DBG_VFS,"VFS: Leave open_namev(), return other error=%d\n", err);
 
                 return err;
             }
         }
-        dbg(DBG_VFS,"VFS: Leave open_namev()\n");
+        dbg(DBG_VFS,"VFS: Leave open_namev(), err=%d\n", err);
         return err;
 }
 

@@ -911,10 +911,10 @@ vfstest_stat(void)
     int fd;
     struct stat s;
 
-    /*KASSERT( !do_mkdir("stat")    );    
+    KASSERT( !do_mkdir("stat")    );    
     KASSERT( !do_chdir("stat")    );
     KASSERT( !do_stat(".", &s)    );
-    KASSERT( S_ISDIR(s.st_mode)   );*/
+    KASSERT( S_ISDIR(s.st_mode)   );
 
     create_file("file");
 
@@ -925,13 +925,15 @@ vfstest_stat(void)
     fd = do_open("file", O_RDWR);
     file_t *file = fget(fd);
     fput(file);
-    dbg(DBG_DISK, "**************vnode reference count: ./%d\n", file -> f_vnode -> vn_refcount);
+    dbg(DBG_DISK, "After Open!!!!!\tvnode reference count: %d\n", file -> f_vnode -> vn_refcount);
     do_write(fd, "foobar", 6);
-    dbg(DBG_DISK, "**************vnode reference count: ./%d\n", file -> f_vnode -> vn_refcount);
+    dbg(DBG_DISK, "After Write!!!!!\tvnode reference count: %d\n", file -> f_vnode -> vn_refcount);
     KASSERT( !do_stat("file", &s)  );
+    dbg(DBG_DISK, "After Stat!!!!!\tvnode reference count: %d\n", file -> f_vnode -> vn_refcount);
     KASSERT( s.st_size == 6       );
     do_close(fd);
-    dbg(DBG_DISK, "**************vnode reference count: ./%d\n", file -> f_vnode -> vn_refcount);
+
+    dbg(DBG_DISK, "After Close!!!!!\tvnode reference count: %d\n", file -> f_vnode -> vn_refcount);
 
 
     /* no entry test */

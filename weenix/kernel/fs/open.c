@@ -143,12 +143,12 @@ do_open(const char *filename, int oflags)
     {
         create=1;
     }
-    
+    dbg(DBG_DISK,"VFS: In do_open(), create=%d\n", create);
     if((error = open_namev(filename, create, &res_vnode, NULL)) != 0 )  
     {
         curproc->p_files[fd] = NULL;
         fput(f);
-        dbg(DBG_VFS,"VFS: Exit do_open(), file not exists;");
+        dbg(DBG_VFS,"VFS: Exit do_open(), file not exists;\n");
         return error;
     }
 

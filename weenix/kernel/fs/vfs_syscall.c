@@ -151,10 +151,10 @@ do_close(int fd)
         }
         curproc->p_files[fd]=NULL;
 
-        /*while(file->f_refcount!=0)
-        {*/
+        while(file->f_refcount!=0)
+        {
                 fput(file);
-        /*} */
+        }
         dbg(DBG_VFS,"VFS: Leave do_close()\n");
         return 0;
 }
@@ -754,14 +754,14 @@ do_stat(const char *path, struct stat *buf)
                 KASSERT(chd->vn_ops->stat);
                 chd->vn_ops->stat(chd,buf);
                 vput(chd);
-                dbg(DBG_VFS,"VFS: Leave do_stat()\n");
+                dbg(DBG_VFS,"VFS: Leave do_stat(), success.\n");
                 return 0;
             }
             vput(par);
-            dbg(DBG_VFS,"VFS: Leave do_stat()\n");
+            dbg(DBG_VFS,"VFS: Leave do_stat(), err1=%d\n", err);
             return err;
         }
-        dbg(DBG_VFS,"VFS: Leave do_stat()\n");
+        dbg(DBG_VFS,"VFS: Leave do_stat(), err2=%d\n", err);
         return err;
 }
 
