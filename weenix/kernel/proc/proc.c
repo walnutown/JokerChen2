@@ -188,10 +188,11 @@ proc_cleanup(int status)
         vput(curproc->p_cwd);
 
         int fd = 0;
-        while( curproc->p_files[fd] )
+        for(fd=0;fd<NFILES;fd++)
         {
-            do_close(fd);
-            fd++;
+            if(curproc->p_files[fd]!=NULL)
+                do_close(fd);
+
         }
         /*wake up the waiting parent*/
         if(curproc->p_pproc->p_wait.tq_size!=0)

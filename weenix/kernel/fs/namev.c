@@ -83,12 +83,16 @@ int
 dir_namev(const char *pathname, size_t *namelen, const char **name,
           vnode_t *base, vnode_t **res_vnode)
 {
-        dbg(DBG_VFS,"##########VFS: Enter dir_namev(), look for path %s\n", pathname);
+        dbg(DBG_VFS,"VFS: Enter dir_namev(), look for path %s\n", pathname);
         KASSERT(NULL != pathname);
         KASSERT(NULL != namelen);
         KASSERT(NULL != name);
         KASSERT(NULL != res_vnode);
         int err=0;
+        if(pathname[0]=='\0')
+        {
+            return -EINVAL;
+        }
         vnode_t* basic;
         basic=base==NULL?curproc->p_cwd:base;
         basic=pathname[0]=='/'?vfs_root_vn:basic;
@@ -104,14 +108,14 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
                     if(i-last>STR_MAX)
                     {
                         /*vput(basic);*/
-                        dbg(DBG_VFS,"##########VFS: Leave dir_namev(), return error ENAMETOOLONG\n");
+                        dbg(DBG_VFS,"VFS: Leave dir_namev(), return error ENAMETOOLONG\n");
                         return -ENAMETOOLONG;
                     }
                     *res_vnode=basic;
                     *namelen=i-last;
                     *name=&pathname[last];
                     vget(basic->vn_fs,basic->vn_vno);
-                    dbg(DBG_VFS,"##########VFS: Leave dir_namev(), find path %s\n", *name);
+                    dbg(DBG_VFS,"VFS: Leave dir_namev(), find path %s\n", *name);
                     return 0;
                 }
             }
@@ -119,17 +123,17 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
             if(pathname[i]!='\0')
             {
                 if(i-last-1>STR_MAX) {
-                    dbg(DBG_VFS,"##########VFS: Leave dir_namev(), return error ENAMETOOLONG\n");
+                    dbg(DBG_VFS,"VFS: Leave dir_namev(), return error ENAMETOOLONG\n");
                     return -ENAMETOOLONG;
                 }
                 if((err=lookup(basic,pathname + last,i-last-1,res_vnode)))
                 {
                     /*vput(basic);*/
-                    dbg(DBG_VFS,"##########VFS: Leave dir_namev(), return lookup error, can't find path %s\n", pathname + last);
+                    dbg(DBG_VFS,"VFS: Leave dir_namev(), return lookup error, can't find path %s\n", pathname + last);
                     return err;
                 }
-                dbg(DBG_VFS,"##########VFS: Parent path:%s\n",pathname+last);
-                dbg(DBG_VFS,"##########VFS: Child name:%s\n",pathname+i);
+                dbg(DBG_VFS,"VFS: Parent path:%s\n",pathname+last);
+                dbg(DBG_VFS,"VFS: Child name:%s\n",pathname+i);
                 last=i;
                 basic=*res_vnode;
                 vput(*res_vnode);
@@ -139,7 +143,7 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
                 *res_vnode=basic;
                 namelen=0;
                 name=NULL;
-                dbg(DBG_VFS,"##########VFS: Leave dir_namev(), find /, special case\n");
+                dbg(DBG_VFS,"VFS: Leave dir_namev(), find /, special case\n");
                 return 0;
             }
         }while(1);

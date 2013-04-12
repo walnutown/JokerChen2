@@ -524,6 +524,7 @@ ramfs_mkdir(vnode_t *dir, const char *name, size_t name_len)
 
         /* Increase inode size accordingly */
         VNODE_TO_RAMFS(dir)->rfs_inodes[ino]->rf_size = 2 * sizeof(ramfs_dirent_t);
+        dbg(DBG_VFS,"VFS: In ramfs_mkdir(), ino=%d\n", ino);
 
         return 0;
 }

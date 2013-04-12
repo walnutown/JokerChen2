@@ -81,7 +81,7 @@ do_open(const char *filename, int oflags)
      * them should be included in oflags.
      */
     int flag = oflags & 0x003;
-    dbg(DBG_VFS,"##########VFS: In do_open(), flag=%x\n", flag);
+    dbg(DBG_VFS, "VFS: In do_open(), flag=%x\n", flag);
     if (flag == 3)
     {
         dbg(DBG_VFS,"VFS: Exit do_open(), not a valid mode\n");

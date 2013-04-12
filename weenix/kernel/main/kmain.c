@@ -79,7 +79,7 @@ static context_t bootstrap_context;
 
 #define VFS_TEST                    10
 
-static int CURRENT_TEST = VFS_TEST;
+static int CURRENT_TEST = KSHELL_TEST;
 
 /**
  * This is the first real C function ever called. It performs a lot off
@@ -850,11 +850,19 @@ hard_shutdown()
 
 
 /*******************************************************************************************
+ 
+
+
  * Test for kernel assignment 2
+
+
+
  *******************************************************************************************/
  #include <errno.h>
  #include <fs/file.h>
  #include <fs/vnode.h>
+ #include <fs/lseek.h>
+ #include <mm/kmalloc.h>
  /* Some helpful strings */
 
 #define LONGNAME "supercalifragilisticexpialidocious" /* Longer than NAME_LEN */
@@ -877,18 +885,18 @@ static char* root_dir;
 static void
 create_file(const char *filename)      
 {                                                                
-    dbg(DBG_VFS, "****************Enter creat_file().\n");
+    dbg(DBG_VFS, "Enter creat_file().\n");
     int fd;                                                                     
     if (( fd = do_open(filename, O_RDONLY|O_CREAT )) )
     {             
             int ret;
             if ( (ret = do_close(fd)) == 0 )
-                dbg(DBG_DISK, "****************Close the created file successfully and leave creat_file().\n");
+                dbg(DBG_DISK, "Close the created file successfully and leave creat_file().\n");
             else
-                dbg(DBG_DISK, "****************Failed to close the created file  and leave creat_file(), error: %d\n", ret);                                                
+                dbg(DBG_DISK, "Failed to close the created file  and leave creat_file(), error: %d\n", ret);                                                
     }
 
-    dbg(DBG_DISK, "****************Failed to create file  and leave creat_file(), error: %d\n", fd);                                                                             
+    dbg(DBG_DISK, "Failed to create file  and leave creat_file(), error: %d\n", fd);                                                                             
 }
 
 static void
@@ -900,7 +908,66 @@ vfstest_start(void)
     do {
             err = do_mkdir(root_dir);
     } while (err != 0);
-    dbg(DBG_DISK, "****************Created test root directory: ./%s\n", root_dir);
+    dbg(DBG_DISK, "Created test root directory: ./%s\n", root_dir);
+}
+
+static void
+paths_equal(const char *p1, const char *p2)
+{
+    struct stat sp1, sp2;
+    KASSERT( !do_mkdir(p1)                  );
+    KASSERT( !do_stat(p1, &sp1)             );
+    KASSERT( !do_stat(p2, &sp2)             );
+    KASSERT( sp1.st_ino == sp2.st_ino       );
+    dbg(DBG_PROC, "paths_equals(\"%s\" (ino %d), \"%s\" (ino %d))", p1, sp1.st_ino, p2, sp2.st_ino);
+}
+
+static void
+read_fd(int fd, ssize_t size, char *goal)
+{
+    void *buf = (void *) kmalloc(9999);
+    KASSERT( (ssize_t)strlen(goal) == do_read(fd, buf, size) );
+    KASSERT(    memcmp(buf, goal, strlen(goal)) == 0         );
+}
+
+static void
+test_fpos(int fd, int exp)
+{
+    int g;
+    g = do_lseek(fd, 0, SEEK_CUR);
+    KASSERT(g == exp);
+    dbg(DBG_VFS, "fd %d fpos at %d, expected %d", fd, g, exp);
+}
+
+static int
+makedirs(const char *dir)
+{
+        char *d, *p;
+
+        if (NULL == (d = kmalloc(strlen(dir) + 1))) 
+        {
+                return -ENOMEM;
+        }
+        strcpy(d, dir);
+
+        p = d;
+        int err;
+        while (NULL != (p = strchr(p + 1, '/'))) 
+        {
+                *p = '\0';
+                /*int err;*/
+                if ( (err = do_mkdir(d)) != 0 ) 
+                {
+                        return err;
+                }
+                *p = '/';
+        }
+        if ( (err = do_mkdir(d)) != 0 ) 
+        {
+                return err;
+        }
+
+        return 0;
 }
 
 /****************************** Syscall Function Test *********************************/
@@ -925,15 +992,15 @@ vfstest_stat(void)
     fd = do_open("file", O_RDWR);
     file_t *file = fget(fd);
     fput(file);
-    dbg(DBG_DISK, "After Open!!!!!\tvnode reference count: %d\n", file -> f_vnode -> vn_refcount);
+    dbg(DBG_DISK, "After Open: vnode reference count: %d\n", file -> f_vnode -> vn_refcount);
     do_write(fd, "foobar", 6);
-    dbg(DBG_DISK, "After Write!!!!!\tvnode reference count: %d\n", file -> f_vnode -> vn_refcount);
+    dbg(DBG_DISK, "After Write: vnode reference count: %d\n", file -> f_vnode -> vn_refcount);
     KASSERT( !do_stat("file", &s)  );
-    dbg(DBG_DISK, "After Stat!!!!!\tvnode reference count: %d\n", file -> f_vnode -> vn_refcount);
+    dbg(DBG_DISK, "After Stat: vnode reference count: %d\n", file -> f_vnode -> vn_refcount);
     KASSERT( s.st_size == 6       );
     do_close(fd);
 
-    dbg(DBG_DISK, "After Close!!!!!\tvnode reference count: %d\n", file -> f_vnode -> vn_refcount);
+    dbg(DBG_DISK, "After Close: vnode reference count: %d\n", file -> f_vnode -> vn_refcount);
 
 
     /* no entry test */
@@ -942,26 +1009,200 @@ vfstest_stat(void)
     do_chdir("..");
 }
 
+/* vfs test of do_mkdir */
+static void
+vfstest_mkdir(void)
+{
+        KASSERT( !do_mkdir("mkdir") );
+        KASSERT( !do_chdir("mkdir") );
+
+        /* mkdir an existing file or directory */
+        create_file("file");
+        KASSERT( do_mkdir("file")       == -EEXIST      );
+        KASSERT( !do_mkdir("dir"));
+        KASSERT( do_mkdir("dir")        == -EEXIST      );
+
+        vnode_t *node_dir = vget(vfs_root_vn->vn_fs, 8);
+        vput(node_dir);
+        dbg(DBG_DISK,"VFS:After do_mkdir(dir), vnode 8 reference count = %d\n", node_dir->vn_refcount);
+
+
+        /* mkdir an invalid path */
+        KASSERT( do_mkdir(LONGNAME)     == -ENAMETOOLONG);
+        KASSERT( do_mkdir("file/dir")   == -ENOTDIR     );
+        KASSERT( do_mkdir("noent/dir")  == -ENOENT      );
+        KASSERT( do_rmdir("file/dir")   == -ENOTDIR     );
+        KASSERT( do_rmdir("noent/dir")  == -ENOENT      );
+        KASSERT( do_rmdir("noent")      == -ENOENT      );
+        KASSERT( do_rmdir(".")          == -EINVAL      );
+        KASSERT( do_rmdir("..")         == -ENOTEMPTY   );
+        KASSERT( do_rmdir("dir/.")      == -EINVAL      );
+        dbg(DBG_DISK,"VFS: EINVAL :After do_rmdir(dir/.), vnode 8 reference count = %d\n", node_dir->vn_refcount);
+        KASSERT( do_rmdir("dir/..")     == -ENOTEMPTY   );
+        dbg(DBG_DISK,"VFS: ENOTEMPTY :After do_rmdir(dir/..), vnode 8 reference count = %d\n", node_dir->vn_refcount);
+        KASSERT( do_rmdir("noent/.")    == -ENOENT      );
+        KASSERT( do_rmdir("noent/..")   == -ENOENT      );
+
+        /* unlink and rmdir the inappropriate types */
+        KASSERT( do_rmdir("file")       == -ENOTDIR     );
+        KASSERT( do_unlink("dir")       == -EISDIR      );
+        dbg(DBG_DISK,"VFS: EISDIR: After do_unlink(dir), vnode 8 reference count = %d\n", node_dir->vn_refcount);
+        /* remove non-empty directory */
+        create_file("dir/file");
+        KASSERT( do_rmdir("dir")        == -ENOTEMPTY   );
+        dbg(DBG_DISK,"VFS: ENOTEMPTY: After do_rmdir(dir), vnode 8 reference count = %d\n", node_dir->vn_refcount);
+        /* remove empty directory */
+        KASSERT( !do_unlink("dir/file"));
+        KASSERT( !do_rmdir("dir"));
+        dbg(DBG_DISK,"VFS: sucess: After do_rmdir(dir), vnode 8 reference count = %d\n", node_dir->vn_refcount);
+        KASSERT( !do_chdir(".."));
+}
+
+static void
+vfstest_chdir(void)
+{
+#define CHDIR_TEST_DIR "chdir"
+
+        struct stat ssrc, sdest, sparent, sdir;
+        struct stat rsrc, rdir;
+
+        /* chdir back and forth to CHDIR_TEST_DIR */
+        KASSERT( !do_mkdir(CHDIR_TEST_DIR)      );
+        KASSERT( !do_stat(".", &ssrc)           );
+        KASSERT( !do_stat(CHDIR_TEST_DIR, &sdir));
+
+        KASSERT( ssrc.st_ino != sdir.st_ino     );
+
+        KASSERT( !do_chdir(CHDIR_TEST_DIR)      );
+        KASSERT( !do_stat(".", &sdest)          );
+        KASSERT( !do_stat("..", &sparent)       );
+
+        KASSERT( sdest.st_ino == sdir.st_ino    );
+        KASSERT( ssrc.st_ino  == sparent.st_ino );
+        KASSERT( ssrc.st_ino  != sdest.st_ino   );
+
+        KASSERT( !do_chdir("..")                );
+        KASSERT( !do_stat(".", &rsrc)           );
+        KASSERT( !do_stat(CHDIR_TEST_DIR, &rdir));
+
+        KASSERT( rsrc.st_ino == ssrc.st_ino     );
+        KASSERT( rdir.st_ino == sdir.st_ino     );
+
+        /* can't chdir into non-directory */
+        KASSERT( !do_chdir(CHDIR_TEST_DIR)      );
+        create_file("file");
+
+        int ret = do_chdir("file");
+        /*KASSERT( do_chdir("file") == -ENOTDIR   );*/
+        KASSERT( ret == -ENOTDIR   );
+        KASSERT( do_chdir("noent")== -ENOENT    );
+        KASSERT( !do_chdir("..")                );
+}
+
+
+static void
+vfstest_paths(void)
+{
+#define PATHS_TEST_DIR "paths"
+
+        struct stat s;
+
+        KASSERT( !do_mkdir(PATHS_TEST_DIR)      );
+        KASSERT( !do_chdir(PATHS_TEST_DIR)      );
+
+        KASSERT( do_stat("", &s) == -EINVAL     );
+
+        /*paths_equal(".", ".");
+        paths_equal("1/2/3", "1/2/3");
+        paths_equal("4/5/6", "4/5/6");*/
+
+        /* root directory */
+        paths_equal("/", "/");
+        paths_equal("/", "/..");
+        paths_equal("/", "/../");
+        paths_equal("/", "/../.");
+
+        /* . and .. */
+        paths_equal(".", "./.");
+        paths_equal(".", "1/..");
+        paths_equal(".", "1/../");
+        paths_equal(".", "1/2/../..");
+        paths_equal(".", "1/2/../..");
+        paths_equal(".", "1/2/3/../../..");
+        paths_equal(".", "1/../1/..");
+        paths_equal(".", "1/../4/..");
+        paths_equal(".", "1/../1/..");
+        paths_equal(".", "1/2/3/../../../4/5/6/../../..");
+        paths_equal(".", "1/./2/./3/./.././.././.././4/./5/./6/./.././.././..");
+
+        /* extra slashes */
+        paths_equal("1/2/3", "1/2/3/");
+        paths_equal("1/2/3", "1//2/3");
+        paths_equal("1/2/3", "1/2//3");
+        paths_equal("1/2/3", "1//2//3");
+        paths_equal("1/2/3", "1//2//3/");
+        paths_equal("1/2/3", "1///2///3///");
+
+        /* strange names */
+        paths_equal("-", "-");
+        paths_equal(" ", " ");
+        paths_equal("\\", "\\");
+        paths_equal("0", "0");
+
+        struct stat st;
+
+        /* error cases */
+        KASSERT( do_stat("asdf", &st)       == -ENOENT  );
+        KASSERT( do_stat("1/asdf", &st)     == -ENOENT  );
+        KASSERT( do_stat("1/../asdf", &st)  == -ENOENT  );
+        KASSERT( do_stat("1/2/asdf", &st)   == -ENOENT  );
+
+        create_file("1/file");
+        KASSERT( do_open("1/file/other", O_RDONLY) == -ENOTDIR);
+        KASSERT( do_open("1/file/other", O_RDONLY | O_CREAT) == -ENOTDIR);
+
+        KASSERT( !do_chdir(".."));
+}
+
+static void
+vfstest_fd(void)
+{
+#define FD_BUFSIZE 5
+#define BAD_FD 20
+#define HUGE_FD 9999
+
+        int fd1, fd2;
+        char buf[FD_BUFSIZE];
+        struct dirent d;
+
+        create_file("file01");
+
+        dbg_print("Create File\n");
+
+        fd1 = do_open("file01", O_RDWR);
+
+        dbg_print("Opern fd1=%d\n", fd1);
+
+        fd2 = do_dup(fd1);
+
+        dbg_print("do_dup fd2=%d\n", fd2);
+
+        KASSERT( fd1 < fd2);
+}
+
+
 /****************************** Main *********************************/
 static void *
 vfs_test() 
-{
-    /* initialize processes and threads*/
-    /* dbg(DBG_VFS,"VFS: Begin VFS_TEST\n");
-    proc_t * proc1, * proc2;
-    kthread_t * kthr1, * kthr2;
-    kmutex_init(&mtx);
-    proc1 = proc_create("proc1");
-    kthr1=kthread_create(proc1,deadlock,0,NULL);
-    proc2 = proc_create("proc2");
-    kthr2=kthread_create(proc2,deadlock,0,NULL);
-    sched_make_runnable(kthr1);
-    sched_make_runnable(kthr2); */
-    
+{   
     /* begin vfs test*/
     vfstest_start();
     do_chdir(root_dir);
     vfstest_stat();
+    vfstest_mkdir();
+    vfstest_chdir();
+    /*vfstest_paths();*/
+    /*vfstest_fd();*/
     return 0;
 }
 
@@ -979,3 +1220,4 @@ vfs_test_run() {
     KASSERT(status==0);
     dbg_print("process %d return.\n",(int)child);
 }
+
