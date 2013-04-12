@@ -481,7 +481,10 @@ do_rmdir(const char *path)
 int
 do_unlink(const char *path)
 {
+<<<<<<< HEAD
         /*NOT_YET_IMPLEMENTED("VFS: do_unlink");*/
+=======
+>>>>>>> delete NOT YET IMPLEMENTED
         dbg(DBG_VFS,"VFS: Enter do_unlink()\n");
         /* get directory vnode*/
         size_t namelen;
@@ -605,7 +608,10 @@ int
 do_rename(const char *oldname, const char *newname)
 {
         
+<<<<<<< HEAD
          /*NOT_YET_IMPLEMENTED("VFS: do_rename");*/
+=======
+>>>>>>> delete NOT YET IMPLEMENTED
          dbg(DBG_VFS,"VFS: Enter do_rename()\n");
          /* link newname to oldname */
          int error;
