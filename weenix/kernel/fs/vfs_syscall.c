@@ -121,7 +121,7 @@ do_write(int fd, const void *buf, size_t nbytes)
                 do_lseek(fd,0,SEEK_END);
                 KASSERT((S_ISCHR(file->f_vnode->vn_mode)) ||
                         (S_ISBLK(file->f_vnode->vn_mode)) ||
-                        ((S_ISREG(file->f_vnode->vn_mode)) && (file->f_pos <= f->f_vnode->vn_len)));
+                        ((S_ISREG(file->f_vnode->vn_mode)) && (file->f_pos <= file->f_vnode->vn_len)));
                 bytes=file->f_vnode->vn_ops->write(file->f_vnode,file->f_pos,buf,nbytes);
                 do_lseek(fd,0,SEEK_END);
                 dbg(DBG_VFS,"VFS: Leave do_write(), success, return %d\n",bytes);
@@ -132,7 +132,7 @@ do_write(int fd, const void *buf, size_t nbytes)
                 do_lseek(fd,bytes,SEEK_CUR);   
                 KASSERT((S_ISCHR(file->f_vnode->vn_mode)) ||
                         (S_ISBLK(file->f_vnode->vn_mode)) ||
-                        ((S_ISREG(file->f_vnode->vn_mode)) && (file->f_pos <= f->f_vnode->vn_len)));
+                        ((S_ISREG(file->f_vnode->vn_mode)) && (file->f_pos <= file->f_vnode->vn_len)));
                 dbg(DBG_VFS,"VFS: Leave do_write(), success, return %d\n",bytes); 
         }
         fput(file);
@@ -187,8 +187,7 @@ do_close(int fd)
 int
 do_dup(int fd)
 {
-        dbg(DBG_VFS,"VFS: Enter do_dup(), fget(%d), vnode %d's reference count %d\n", 
-            fd, file->f_vnode->vn_vno, file->f_vnode->vn_refcount);
+        dbg(DBG_VFS,"VFS: Enter do_dup().\n");
         if(fd < 0 || fd > NFILES)
             return -EBADF;
         file_t* file=fget(fd);
