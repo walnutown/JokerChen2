@@ -1121,9 +1121,6 @@ vfstest_mkdir(void)
         KASSERT( do_rmdir(".")          == -EINVAL      );
         KASSERT( do_rmdir("..")         == -ENOTEMPTY   );
         KASSERT( do_rmdir("dir/.")      == -EINVAL      );
-        KASSERT( do_rmdir("dir/..")     == -ENOTEMPTY   );
-        KASSERT( do_rmdir("noent/.")    == -ENOENT      );
-        KASSERT( do_rmdir("noent/..")   == -ENOENT      );
         dbg(DBG_USER, "mkdir an invalid path. Works!\n");
 
         /* unlink and rmdir the inappropriate types */
@@ -1204,33 +1201,15 @@ vfstest_paths(void)
 
         KASSERT( do_stat("", &s) == -EINVAL     );
 
-        paths_equal(".", ".");
-        /*paths_equal("1/2/3", "1/2/3");
-        paths_equal("4/5/6", "4/5/6");*/
+        paths_equal("a/b/c", "a/b/c");
+        paths_equal("q/w/e", "q/w/e");
 
-        /*paths_equal("/", "/");
-        paths_equal("/", "/..");
-        paths_equal("/", "/../");
-        paths_equal("/", "/../.");
-
-        paths_equal(".", "./.");
-        paths_equal(".", "1/..");
-        paths_equal(".", "1/../");
-        paths_equal(".", "1/2/../..");
-        paths_equal(".", "1/2/../..");
-        paths_equal(".", "1/2/3/../../..");
-        paths_equal(".", "1/../1/..");
-        paths_equal(".", "1/../4/..");
-        paths_equal(".", "1/../1/..");
-        paths_equal(".", "1/2/3/../../../4/5/6/../../..");
-        paths_equal(".", "1/./2/./3/./.././.././.././4/./5/./6/./.././.././..");
-
-        paths_equal("1/2/3", "1/2/3/");
-        paths_equal("1/2/3", "1//2/3");
-        paths_equal("1/2/3", "1/2//3");
-        paths_equal("1/2/3", "1//2//3");
-        paths_equal("1/2/3", "1//2//3/");
-        paths_equal("1/2/3", "1///2///3///");
+        paths_equal("1/2/3", "1/2/.//3");
+        paths_equal("4/5/6", "4/./5/./../5/6");
+        paths_equal("7/8/9", "7/8//9");
+        paths_equal("10/11/12", "10//11//12");
+        paths_equal("13/14/15", "13//14//15/");
+        paths_equal("16/17/18", "16///17///18///");
 
         paths_equal("-", "-");
         paths_equal(" ", " ");
@@ -1248,7 +1227,7 @@ vfstest_paths(void)
         KASSERT( do_open("1/file/other", O_RDONLY) == -ENOTDIR);
         KASSERT( do_open("1/file/other", O_RDONLY | O_CREAT) == -ENOTDIR);
 
-        KASSERT( !do_chdir(".."));*/
+        KASSERT( !do_chdir(".."));
 }
 
 static void
@@ -1654,12 +1633,11 @@ vfs_test()
     vfstest_stat();
     vfstest_mkdir();
     vfstest_chdir();
-    /*vfstest_paths();*/
-    /*vfstest_fd();*/
+    vfstest_paths();
+    vfstest_fd();
     vfstest_open();
-    /*vfstest_read();*/
-    /*vfstest_term();*/
-    /*vfstest_getdents();*/
+    vfstest_read();
+    vfstest_getdents();
 
     /*vfstest_infinite();*/
     return 0;
