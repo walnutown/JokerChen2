@@ -914,8 +914,8 @@ static void
 paths_equal(const char *p1, const char *p2)
 {
     struct stat sp1, sp2;
-    if( !(do_mkdir(p1) == -EEXIST))
-        do_mkdir(p1);
+    
+    KASSERT( !makedirs(p1)                  );   
     
     KASSERT( !do_stat(p1, &sp1)             );
     KASSERT( !do_stat(p2, &sp2)             );
@@ -1068,9 +1068,11 @@ vfstest_stat(void)
         KASSERT( S_ISDIR(s.st_mode)   );
 
         create_file("file");
+        display_node_create ("file"); 
 
         KASSERT( !do_stat("file", &s) );
         KASSERT( S_ISREG(s.st_mode)   );
+        dbg(DBG_USER, "file mode is correct!\n");
 
         /* file size is correct */
         fd = do_open("file", O_RDWR);
@@ -1080,9 +1082,11 @@ vfstest_stat(void)
         KASSERT( !do_stat("file", &s) );
         KASSERT( s.st_size == 6       );
         do_close(fd);
+        dbg(DBG_USER, "file size is correct!\n");
 
         /* no entry test */
         KASSERT( do_stat("noent", &s) == -ENOENT );
+        dbg(DBG_USER, "No entry test. Works!\n");
 
         do_chdir("..");
 }
@@ -1093,20 +1097,19 @@ vfstest_mkdir(void)
 {
         dbg(DBG_USER, "//---------------- VFSTEST_MKDIR Begins--------------------------------------//\n");        
         KASSERT( !do_mkdir("mkdir") );
-        display_node_create("open");
+        display_node_create("mkdir");
         KASSERT( !do_chdir("mkdir") );
 
         /* mkdir an existing file or directory */
-        dbg(DBG_USER, "Mkdir an existing file or directory-----------------------//\n");
         create_file("file");
         display_node_create("file");
         KASSERT( do_mkdir("file")       == -EEXIST      );
         KASSERT( !do_mkdir("dir")           );
         display_node_create("dir");
         KASSERT( do_mkdir("dir")        == -EEXIST      );
+        dbg(DBG_USER, "mkdir an existing file or directory. Works!\n");
 
         /* mkdir an invalid path */
-        dbg(DBG_USER, "Mkdir an invalid path. Works!\n");
         KASSERT( do_mkdir(LONGNAME)     == -ENAMETOOLONG);
         KASSERT( do_mkdir("file/dir")   == -ENOTDIR     );
         KASSERT( do_mkdir("noent/dir")  == -ENOENT      );
@@ -1119,23 +1122,25 @@ vfstest_mkdir(void)
         KASSERT( do_rmdir("dir/..")     == -ENOTEMPTY   );
         KASSERT( do_rmdir("noent/.")    == -ENOENT      );
         KASSERT( do_rmdir("noent/..")   == -ENOENT      );
+        dbg(DBG_USER, "mkdir an invalid path. Works!\n");
 
         /* unlink and rmdir the inappropriate types */
-        dbg(DBG_USER, "Unlink and rmdir the inappropriate types. Works!\n");
         KASSERT( do_rmdir("file")       == -ENOTDIR     );
         KASSERT( do_unlink("dir")       == -EISDIR      );
-        
+        dbg(DBG_USER, "Unlink and rmdir the inappropriate types. Works!\n");
+
         /* remove non-empty directory */
-        dbg(DBG_USER, "Remove non-empty directory. Works!\n");
         create_file("dir/file");
         display_node_create("dir/file");
         KASSERT( do_rmdir("dir")        == -ENOTEMPTY   );
+        dbg(DBG_USER, "Remove non-empty directory. Works!\n");
         
         /* remove empty directory */
-        dbg(DBG_USER, "Remove empty directory. Works!\n");
         display_node_remove("dir/file");
         KASSERT( !do_unlink("dir/file"));
         KASSERT( !do_rmdir("dir"));
+        dbg(DBG_USER, "Remove empty directory. Works!\n");
+
         KASSERT( !do_chdir(".."));
 }
 
@@ -1148,8 +1153,8 @@ vfstest_chdir(void)
         struct stat rsrc, rdir;
 
         /* chdir back and forth to CHDIR_TEST_DIR */
-        dbg(DBG_USER, "Chdir back and forth to CHDIR_TEST_DIR. Works!\n");
         KASSERT( !do_mkdir(CHDIR_TEST_DIR)      );
+        display_node_create (CHDIR_TEST_DIR); 
         KASSERT( !do_stat(".", &ssrc)           );
         KASSERT( !do_stat(CHDIR_TEST_DIR, &sdir));
 
@@ -1169,15 +1174,17 @@ vfstest_chdir(void)
 
         KASSERT( rsrc.st_ino == ssrc.st_ino     );
         KASSERT( rdir.st_ino == sdir.st_ino     );
+        dbg(DBG_USER, "Chdir back and forth to CHDIR_TEST_DIR. Works!\n");
 
         /* can't chdir into non-directory */
-        dbg(DBG_USER, "Can't chdir into non-directory. Works!\n");
         KASSERT( !do_chdir(CHDIR_TEST_DIR)      );
         create_file("file");
 
         int ret = do_chdir("file");
         KASSERT( ret == -ENOTDIR   );
         KASSERT( do_chdir("noent")== -ENOENT    );
+        dbg(DBG_USER, "Can't chdir into non-directory. Works!\n");
+
         KASSERT( !do_chdir("..")                );
 }
 
@@ -1254,10 +1261,10 @@ vfstest_fd(void)
         struct dirent d;
 
         KASSERT( !do_mkdir("fd")    );
+        display_node_create("fd");
         KASSERT( !do_chdir("fd")    );
 
         /* read/write/close/getdents/dup nonexistent file descriptors */
-        dbg(DBG_USER, "Read/write/close/getdents/dup nonexistent file descriptors, works!\n");
         KASSERT( do_read(BAD_FD, buf, FD_BUFSIZE)   == -EBADF   );
         KASSERT( do_read(HUGE_FD, buf, FD_BUFSIZE)  == -EBADF   );
         KASSERT( do_read(-1, buf, FD_BUFSIZE)       == -EBADF   );
@@ -1285,11 +1292,12 @@ vfstest_fd(void)
         KASSERT( do_dup2(BAD_FD, 10)                == -EBADF   );
         KASSERT( do_dup2(HUGE_FD, 10)               == -EBADF   );
         KASSERT( do_dup2(-1, 10)                    == -EBADF   );
+        dbg(DBG_USER, "Read/write/close/getdents/dup nonexistent file descriptors, works!\n");
 
         /* dup2 has some extra cases since it takes a second fd */
-        dbg(DBG_USER, "Dup2 has some extra cases since it takes a second fd, works!\n");
         KASSERT( do_dup2(0, HUGE_FD)                == -EBADF   );
         KASSERT( do_dup2(0, -1)                     == -EBADF   );
+        dbg(DBG_USER, "Dup2 has some extra cases since it takes a second fd, works!\n");
 
         /* if the fds are equal, but the first is invalid or out of the
          * allowed range */
@@ -1298,7 +1306,6 @@ vfstest_fd(void)
         KASSERT( do_dup2(-1, -1)                    == -EBADF   );
 
         /* dup works properly in normal usage */
-        dbg(DBG_USER, "Dup works properly in normal usage!\n");
         create_file("file01");
         fd1 = do_open("file01", O_RDWR);
         fd2 = do_dup(fd1);
@@ -1310,11 +1317,12 @@ vfstest_fd(void)
         read_fd(fd1, 5, "hello"); 
         test_fpos(fd1, 5); test_fpos(fd2, 5);
         KASSERT( !do_close(fd2) );
+        dbg(DBG_USER, "Dup works properly in normal usage!\n");
 
         /* dup2 works properly in normal usage */
-        dbg(DBG_USER, "Dup2 works properly in normal usage!\n");
         fd2 = do_dup2(fd1, 10);
         KASSERT( 10 == fd2  );
+        dbg(DBG_USER, "Dup2 works properly in normal usage!\n");
 
         test_fpos(fd1, 5); test_fpos(fd2, 5);
         do_lseek(fd2, 0, SEEK_SET);
@@ -1322,13 +1330,12 @@ vfstest_fd(void)
         KASSERT( !do_close(fd2) );
 
         /* dup2-ing a file to itself works */
-        dbg(DBG_USER, "Dup2-ing a file to itself. Works!\n");
         fd2 = do_dup2(fd1, fd1);
         KASSERT( fd1 == fd2 );
         KASSERT( !do_close(fd2) );
+        dbg(DBG_USER, "Dup2-ing a file to itself. Works!\n");
 
         /* dup2 closes previous file */
-        dbg(DBG_USER, "Dup2 closing previous file. Works!\n");
         int fd3;
         create_file("file02");
         fd3 = do_open("file02", O_RDWR);
@@ -1337,6 +1344,7 @@ vfstest_fd(void)
         test_fpos(fd1, 0); test_fpos(fd2, 0);
         do_lseek(fd2, 5, SEEK_SET);
         test_fpos(fd1, 5); test_fpos(fd2, 5);
+        dbg(DBG_USER, "Dup2 closing previous file. Works!\n");
         
         KASSERT( !do_chdir("..")    );
 }
@@ -1359,12 +1367,11 @@ vfstest_open(void)
         /* No invalid combinations of O_RDONLY, O_WRONLY, and O_RDWR.  Since
          * O_RDONLY is stupidly defined as 0, the only invalid possible
          * combination is O_WRONLY|O_RDWR. */
-        dbg(DBG_USER, "FILE: \"file01\" : INVALID flag. Works!\n");
         KASSERT( do_open("file01", O_WRONLY | O_RDWR | O_CREAT)            == -EINVAL   );
         KASSERT( do_open("file01", O_RDONLY | O_RDWR | O_WRONLY | O_CREAT) == -EINVAL   );
+        dbg(DBG_USER, "FILE: \"file01\" : INVALID flag. Works!\n");
 
         /* Cannot open nonexistent file without O_CREAT */
-        dbg(DBG_USER, "FILE: \"file02\" : Cannot open nonexistent file without O_CREAT. Works!\n");
         KASSERT( do_open("file02", O_WRONLY) == -ENOENT);
         fd = do_open("file02", O_RDONLY | O_CREAT);
         display_node_create("file02");
@@ -1372,34 +1379,34 @@ vfstest_open(void)
         display_node_remove("file02");
         KASSERT( !do_unlink("file02")               );
         KASSERT( do_stat("file02", &s)  == -ENOENT  );
+        dbg(DBG_USER, "FILE: \"file02\" : Cannot open nonexistent file without O_CREAT. Works!\n");
 
         /* Cannot create invalid files */
-        dbg(DBG_USER, "FILE: \"tmpfile\" : Cannot create invalid files. Works!\n");
         create_file("tmpfile");
         display_node_create("tmpfile");
         KASSERT( do_open("tmpfile/test", O_RDONLY | O_CREAT) == -ENOTDIR    );
         KASSERT( do_open("noent/test", O_RDONLY | O_CREAT)   == -ENOENT     );
         KASSERT( do_open(LONGNAME, O_RDONLY | O_CREAT)       == -ENAMETOOLONG);
+        dbg(DBG_USER, "FILE: \"tmpfile\" : Cannot create invalid files. Works!\n");
 
         /* Cannot write to readonly file */
-        dbg(DBG_USER, "FILE: \"file03\" : Cannot write to readonly file. Works!\n");
         fd = do_open("file03", O_RDONLY | O_CREAT);
         display_node_create("file03");
         KASSERT( do_write(fd, "hello", 5) == -EBADF );
         KASSERT( !do_close(fd)                      );
+        dbg(DBG_USER, "FILE: \"file03\" : Cannot write to readonly file. Works!\n");
 
         /* Cannot read from writeonly file.  Note that we do not unlink() it
          * from above, so we do not need O_CREAT set. */
-        dbg(DBG_USER, "FILE: \"file03\" : Cannot read from writeonly file. Works!\n");
         fd = do_open("file03", O_WRONLY);
         KASSERT( do_read(fd, buf, OPEN_BUFSIZE) == -EBADF);
         KASSERT( !do_close(fd)                      );
         display_node_remove("file03");
         KASSERT( !do_unlink("file03")               );
         KASSERT( do_stat("file03", &s)   == -ENOENT );
+        dbg(DBG_USER, "FILE: \"file03\" : Cannot read from writeonly file. Works!\n");
 
         /* Lowest file descriptor is always selected. */
-        dbg(DBG_USER, "FILE: \"file04\" : Lowest file descriptor is always selected. Works!\n");
         fd  = do_open("file04", O_RDONLY | O_CREAT);
         display_node_create("file04");
         fd2 = do_open("file04", O_RDONLY);
@@ -1412,27 +1419,28 @@ vfstest_open(void)
         display_node_remove("file04");
         KASSERT( !do_unlink("file04")           );
         KASSERT( do_stat("file04", &s)== -ENOENT);
+        dbg(DBG_USER, "FILE: \"file04\" : Lowest file descriptor is always selected. Works!\n");
 
         /* Cannot open a directory for writing */
-        dbg(DBG_USER, "DIR: \"file05\" : Cannot open a directory for writing. Works!\n");
         KASSERT( !do_mkdir("file05") );
         display_node_create("file05");                      
         KASSERT( do_open("file05", O_WRONLY) == -EISDIR);
         KASSERT( do_open("file05", O_RDWR)   == -EISDIR);
         display_node_remove("file05");
         KASSERT( !do_rmdir("file05")                );
+        dbg(DBG_USER, "DIR: \"file05\" : Cannot open a directory for writing. Works!\n");
 
         /* Cannot unlink a directory */
-        dbg(DBG_USER, "DIR: \"file06\" : Cannot unlink a directory. Works!\n");
         KASSERT( !do_mkdir("file06") );
         display_node_create("file06");                  
         KASSERT( do_unlink("file06")      == -EISDIR);
         display_node_remove("file06");
         KASSERT( !do_rmdir("file06")                );
+        dbg(DBG_USER, "DIR: \"file06\" : Cannot unlink a directory. Works!\n");
 
         /* Cannot unlink a non-existent file */
-        dbg(DBG_USER, "FILE: \"file07\" : Cannot unlink a non-existent file. Works!\n");
         KASSERT( do_unlink("file07") == -ENOENT     );
+        dbg(DBG_USER, "FILE: \"file07\" : Cannot unlink a non-existent file. Works!\n");
 
         KASSERT( !do_chdir("..")                    );
 }
@@ -1449,7 +1457,6 @@ vfstest_read(void)
         display_node_create("read");
         KASSERT( !do_chdir("read")                          );
 
-        dbg(DBG_USER, "FILE: \"file01\" : Can read and write to a file. Works!\n");
         fd  = do_open("file01", O_RDWR | O_CREAT);
         ret = do_write(fd, "hello", 5);
         dbg_print("do_write(), ret=%d\n", ret);
@@ -1458,14 +1465,16 @@ vfstest_read(void)
         KASSERT(    0 == ret                                );
         read_fd(fd, READ_BUFSIZE, "hello");
         KASSERT( !do_close(fd)                              );
+        dbg(DBG_USER, "FILE: \"file01\" : Can read and write to a file. Works!\n");
 
-        dbg(DBG_USER, "DIR: \"dir01\" : Cannot read from a directory. Works!\n");
+       
         KASSERT( !do_mkdir("dir01")                         );
         fd = do_open("dir01", O_RDONLY);
         KASSERT( do_read(fd, buf, READ_BUFSIZE)  == -EISDIR );
         KASSERT( !do_close(fd)                              );
+        dbg(DBG_USER, "DIR: \"dir01\" : Cannot read from a directory. Works!\n");
 
-        dbg(DBG_USER, "FILE: \"file02\": Can seek to beginning, middle, and end of file. Works!\n");
+       
         fd = do_open("file02", O_RDWR | O_CREAT);
         KASSERT( do_write(fd, "hello", 5) == 5              );
 
@@ -1495,8 +1504,9 @@ vfstest_read(void)
 
         KASSERT( do_lseek(fd, 0, SEEK_SET + SEEK_CUR + SEEK_END) == -EINVAL );
         KASSERT( !do_close(fd)                          );
+        dbg(DBG_USER, "FILE: \"file02\": Can seek to beginning, middle, and end of file. Works!\n");
 
-        dbg(DBG_USER, "FILE: \"file03\":  O_APPEND works properly\n");
+        
         create_file("file03");
         fd = do_open("file03", O_RDWR);
         test_fpos(fd, 0);
@@ -1520,8 +1530,8 @@ vfstest_read(void)
         test_fpos(fd, 0);
         read_fd(fd, 15, "hellohelloagain");
         KASSERT( !do_close(fd)  );
-
-        dbg(DBG_USER, "FILE: \"file04\":  seek and write beyond end of file. Works!\n");
+        dbg(DBG_USER, "FILE: \"file03\":  O_APPEND works properly\n");
+        
         create_file("file04");
         fd = do_open("file04", O_RDWR);
         do_write(fd, "hello", 5);
@@ -1534,6 +1544,7 @@ vfstest_read(void)
         KASSERT( 15 == do_read(fd, buf, READ_BUFSIZE)   );
         KASSERT( 0  == memcmp(buf, "hello\0\0\0\0\0again", 15));
         KASSERT( !do_close(fd)  );
+        dbg(DBG_USER, "FILE: \"file04\":  seek and write beyond end of file. Works!\n");
 
         KASSERT( !do_chdir("..")                        );
 }
@@ -1563,7 +1574,6 @@ vfstest_getdents(void)
         KASSERT( !do_chdir("getdents")               );
 
         /* getdents works */
-        dbg(DBG_USER, "Getdents works!\n");
         KASSERT( !do_mkdir("dir01")                  );
         display_node_create("dir01");
         KASSERT( !do_mkdir("dir01/1")                );
@@ -1587,14 +1597,15 @@ vfstest_getdents(void)
         ret = getdents(fd, dirents, sizeof(dirent_t));
         KASSERT( 0 == ret );
         KASSERT( !do_close(fd)                      );
+        dbg(DBG_USER, "Getdents works!\n");
 
         /* Cannot call getdents on regular file */
-        dbg(DBG_USER, "Cannot call getdents on regular file. Works!\n");
         create_file("file01");
         display_node_create("file01");
         fd = do_open("file01", O_RDONLY);
         KASSERT( getdents(fd, dirents, 4 * sizeof(dirent_t)) == -ENOTDIR );
         KASSERT( !do_close(fd)                      );
+        dbg(DBG_USER, "Cannot call getdents on regular file. Works!\n");
 
         KASSERT( !do_chdir(".."));
 }
