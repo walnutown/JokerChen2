@@ -1631,14 +1631,19 @@ vfstest_getdents(void)
 static void
 vfstest_infinite(void)
 {
-        int res, fd;
-        char buf[4096];
+
+       int res, fd;
+        char buf[PAGE_SIZE];
 
         res = 1;
         fd = do_open("/dev/null", O_WRONLY);
+    file_t *f;  
+    f = fget(fd);
+    fput(f);
         while (0 < res) 
         {
                 res = do_write(fd, buf, sizeof(buf));
+        dbg(DBG_PRINT, "file position: %d\n", f->f_pos);
         }
         KASSERT( !do_close(fd) );
 
@@ -1665,12 +1670,12 @@ vfs_test()
     vfstest_chdir();*/
     /*vfstest_paths();*/
     /*vfstest_fd();*/
-    /*vfstest_open();*/
+    vfstest_open();
     /*vfstest_read();*/
     /*vfstest_term();*/
     /*vfstest_getdents();*/
 
-    vfstest_infinite();
+    /*vfstest_infinite();*/
     return 0;
 }
 
