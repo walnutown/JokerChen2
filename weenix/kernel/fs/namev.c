@@ -84,6 +84,7 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
           vnode_t *base, vnode_t **res_vnode)
 {
         dbg(DBG_VFS,"VFS: Enter dir_namev(), look for path %s\n", pathname);
+
         KASSERT(NULL != pathname);
         KASSERT(NULL != namelen);
         KASSERT(NULL != name);
@@ -119,7 +120,10 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
                     return 0;
                 }
             }
-
+            while(pathname[i]=='/')
+            {
+                i++;
+            }
             if(pathname[i]!='\0')
             {
                 if(i-last-1>STR_MAX) {
@@ -148,6 +152,7 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
             }
         }while(1);
 }
+
 
 /* This returns in res_vnode the vnode requested by the other parameters.
  * It makes use of dir_namev and lookup to find the specified vnode (if it

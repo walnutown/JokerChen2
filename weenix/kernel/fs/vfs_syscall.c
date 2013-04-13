@@ -363,7 +363,7 @@ do_mknod(const char *path, int mode, unsigned devid)
 int
 do_mkdir(const char *path)
 {
-        dbg(DBG_VFS,"VFS: Enter do_mkdir(), path=%s\n", path);
+        dbg_print("VFS: Enter do_mkdir(), path=%s\n", path);
         size_t namelen;
         const char *name;
         vnode_t *dir_vnode;
@@ -373,27 +373,30 @@ do_mkdir(const char *path)
         /* Err includeing, ENOENT, ENOTDIR, ENAMETOOLONG*/
         if((err = dir_namev(path, &namelen, &name, NULL, &dir_vnode) ) != 0) {
                 /* vput(dir_vnode); */
-                dbg(DBG_VFS,"VFS: Leave do_mkdir(), cannot find path %s, err=%d\n", path, err);
+                dbg_print("VFS: Leave do_mkdir(), cannot find path %s, err=%d\n", path, err);
                 return err;
         }
+        dbg_print("VFS: In do_mkdir(), After dir_namev(), dir_vnode->vn_vno=%d\n", dir_vnode->vn_vno);
+        dbg_print("VFS: In do_mkdir(), After dir_namev(), vfs_root_vn=%d\n", vfs_root_vn->vn_vno);
+        dbg_print("VFS: In do_mkdir(), Before lookup(), name=%s\n", name);
         /* Use lookup() to make sure it doesn't already exist.*/
         if(lookup(dir_vnode, name, namelen, &res_vnode) == 0) {
                 vput(dir_vnode);
                 vput(res_vnode);
-                dbg(DBG_VFS,"VFS: Leave do_mkdir(), err file already exist\n");
+                dbg_print("VFS: Leave do_mkdir(), err file already exist\n");
                 return -EEXIST;
         }
         if(dir_vnode -> vn_ops -> mkdir == NULL) {
             vput(dir_vnode);
-            dbg(DBG_VFS,"VFS: Leave do_mkdir(), err not directory\n");
+            dbg_print("VFS: Leave do_mkdir(), err not directory\n");
             return -ENOTDIR;
         }
         /* Call the dir's mkdir vn_ops. Return what it returns.*/
         KASSERT(NULL != dir_vnode->vn_ops->mkdir);
-        dbg(DBG_VFS,"VFS:In do_mkdir(), before ramfs_mkdir path=%s\n", path);
+        dbg_print("VFS:In do_mkdir(), before ramfs_mkdir path=%s\n", path);
         err = dir_vnode -> vn_ops -> mkdir(dir_vnode, name, namelen);
         vput(dir_vnode);
-        dbg(DBG_VFS,"VFS: Leave do_mkdir(), err=%d\n", err);
+        dbg_print("VFS: Leave do_mkdir(), err=%d\n", err);
         return err;
 }
 
@@ -819,7 +822,7 @@ do_lseek(int fd, int offset, int whence)
 int
 do_stat(const char *path, struct stat *buf)
 {
-        dbg(DBG_VFS,"VFS: Enter do_stat()\n");
+        dbg_print("VFS: Enter do_stat(), path=%s\n", path);
         size_t len;
         const char *name;
         vnode_t* par;
@@ -829,6 +832,7 @@ do_stat(const char *path, struct stat *buf)
         err=dir_namev(path,&len,&name,NULL,&par);
         if(!err)
         {
+            dbg_print("VFS: In do_stat() lookup(),  path=%s, name=%s,len=%d\n", path, name, len);
             err=lookup(par,name,len,&chd);
             if(!err)
             {
@@ -836,14 +840,14 @@ do_stat(const char *path, struct stat *buf)
                 KASSERT(chd->vn_ops->stat);
                 chd->vn_ops->stat(chd,buf);
                 vput(chd);
-                dbg(DBG_VFS,"VFS: Leave do_stat(), success.\n");
+                dbg_print("VFS: Leave do_stat(), success.\n");
                 return 0;
             }
             vput(par);
-            dbg(DBG_VFS,"VFS: Leave do_stat(), err1=%d\n", err);
+            dbg_print("VFS: Leave do_stat(), err1=%d\n", err);
             return err;
         }
-        dbg(DBG_VFS,"VFS: Leave do_stat(), err2=%d\n", err);
+        dbg_print("VFS: Leave do_stat(), err2=%d\n", err);
         return err;
 }
 
