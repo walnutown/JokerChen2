@@ -910,6 +910,30 @@ vfstest_start(void)
     dbg(DBG_DISK, "Created test root directory: ./%s\n", root_dir);
 }
 
+static int
+makedirs(const char *dir)
+{
+        char *d, *p;
+
+        if (NULL == (d = kmalloc(strlen(dir) + 1))) 
+                return -ENOMEM;
+        strcpy(d, dir);
+
+        p = d;
+        int err;
+        while (NULL != (p = strchr(p + 1, '/'))) 
+        {
+                *p = '\0';
+                if ( (err = do_mkdir(d)) != 0 ) 
+                        return err;
+                *p = '/';
+        }
+        if ( (err = do_mkdir(d)) != 0 ) 
+                return err;
+
+        return 0;
+}
+
 static void
 paths_equal(const char *p1, const char *p2)
 {
@@ -941,29 +965,7 @@ test_fpos(int fd, int exp)
     dbg(DBG_VFS, "fd %d fpos at %d, expected %d", fd, g, exp);
 }
 
-static int
-makedirs(const char *dir)
-{
-        char *d, *p;
 
-        if (NULL == (d = kmalloc(strlen(dir) + 1))) 
-                return -ENOMEM;
-        strcpy(d, dir);
-
-        p = d;
-        int err;
-        while (NULL != (p = strchr(p + 1, '/'))) 
-        {
-                *p = '\0';
-                if ( (err = do_mkdir(d)) != 0 ) 
-                        return err;
-                *p = '/';
-        }
-        if ( (err = do_mkdir(d)) != 0 ) 
-                return err;
-
-        return 0;
-}
 
 
 static void
@@ -1649,9 +1651,9 @@ vfs_test()
     /* begin vfs test*/
     vfstest_start();
     do_chdir(root_dir);
-    /*vfstest_stat();
+    vfstest_stat();
     vfstest_mkdir();
-    vfstest_chdir();*/
+    vfstest_chdir();
     /*vfstest_paths();*/
     /*vfstest_fd();*/
     vfstest_open();
