@@ -166,7 +166,7 @@ int
 dir_namev(const char *pathname, size_t *namelen, const char **name,
           vnode_t *base, vnode_t **res_vnode)
 {
-        dbg_print("VFS: Enter dir_namev(), look for path %s\n", pathname);
+        dbg(DBG_VFS,"VFS: Enter dir_namev(), look for path %s\n", pathname);
 
         convert_path(pathname);
         pathname = newPath;
@@ -196,14 +196,15 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
                     if(i-last>STR_MAX)
                     {
                         /*vput(basic);*/
-                        dbg_print("VFS: Leave dir_namev(), return error ENAMETOOLONG\n");
+                        dbg(DBG_VFS,"VFS: Leave dir_namev(), return error ENAMETOOLONG\n");
                         return -ENAMETOOLONG;
                     }
                     *res_vnode=basic;
                     *namelen=i-last;
                     *name=&pathname[last];
                     vget(basic->vn_fs,basic->vn_vno);
-                    dbg_print("VFS: Leave dir_namev(), find path %s\n", *name);
+                    KASSERT(NULL !=res_vnode);
+                    dbg(DBG_VFS,"VFS: Leave dir_namev(), find path %s\n", *name);
                     return 0;
                 }
             }
@@ -214,14 +215,14 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
             if(pathname[i]!='\0')
             {
                 if(i-last-1>STR_MAX) {
-                    dbg_print("VFS: Leave dir_namev(), return error ENAMETOOLONG\n");
+                    dbg(DBG_VFS,"VFS: Leave dir_namev(), return error ENAMETOOLONG\n");
                     return -ENAMETOOLONG;
                 }
                 dbg_print("VFS:In dir_namev(), before lookup(), look for %s, length=%d\n", pathname+last, i-last-1);
                 if((err=lookup(basic,pathname + last,i-last-1,res_vnode)))
                 {
                     /*vput(basic);*/
-                    dbg_print("VFS: Leave dir_namev(), return lookup error, can't find path %s\n", pathname + last);
+                    dbg(DBG_VFS,"VFS: Leave dir_namev(), return lookup error, can't find path %s\n", pathname + last);
                     return err;
                 }
                 dbg(DBG_VFS,"VFS: Parent path:%s\n",pathname+last);
@@ -235,7 +236,7 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
                 *res_vnode=basic;
                 namelen=0;
                 name=NULL;
-                dbg_print("VFS: Leave dir_namev(), find /, special case\n");
+                dbg(DBG_VFS,"VFS: Leave dir_namev(), find /, special case\n");
                 return 0;
             }
         }while(1);
@@ -273,9 +274,8 @@ open_namev(const char *pathname, int flag, vnode_t **res_vnode, vnode_t *base)
             }
             else if((err==-ENOENT)&&flag&&(par->vn_ops->create!=NULL))
             {
+                KASSERT(NULL != par->vn_ops->create);
                 int ret = par->vn_ops->create(par,name,len,res_vnode);
-                dbg(DBG_VFS,"VFS: In open_namev(), ret=%d\n", ret);
-                /*KASSERT(NULL != ret);  */
                 vput(par);
                 dbg(DBG_VFS,"VFS: Leave open_namev(), file not exist, create file\n");
                 return 0;
@@ -283,9 +283,7 @@ open_namev(const char *pathname, int flag, vnode_t **res_vnode, vnode_t *base)
             else if(err!=0)
             {
                 vput(par);
-
                 dbg(DBG_VFS,"VFS: Leave open_namev(), return other error=%d\n", err);
-
                 return err;
             }
         }
