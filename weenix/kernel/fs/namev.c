@@ -55,10 +55,93 @@ lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result)
              {
                 *result=dir->
              }*/
-            dbg(DBG_VFS,"VFS: Leave lookup(), find %s\n", name);
-            return dir->vn_ops->lookup(dir,name,len,result);
+            int ret = dir->vn_ops->lookup(dir,name,len,result);
+            dbg(DBG_VFS,"VFS: Leave lookup(), find %s, error=%d\n", name, ret);
+            return ret;
         }
         
+}
+
+char newPath[999];
+
+void convert_path(const char *pathname) {
+        dbg_print("In convert_path, before path=%s\n", pathname);
+        /*******path pre process*******/
+        /*******handle for '///'**********/
+        char newpath[999];
+        int i=0;
+        int j=0;
+        while(pathname[i]!='\0')
+        {
+            if(pathname[i]!='/')
+            {
+                newpath[j++]=pathname[i++];
+            }
+            else
+            {
+                newpath[j++]=pathname[i++];
+                while(pathname[i]=='/'){i++;}
+            }
+        }
+
+        newpath[j--]='\0';
+        if(newpath[j]=='/')
+        {
+            newpath[j--]='\0';
+        }
+
+
+        /*******handle for '../'' './'*******/
+            int oldP = 0;
+
+            int dotCount = 0;
+            int newP = 0;
+            while(newpath[oldP] != '\0') {
+                if(newpath[oldP] == '.') {
+                    newPath[newP] = newpath[oldP];
+                    dotCount++;
+                }
+                else if(newpath[oldP] == '/') {
+                    /* back to parent */
+                    if(dotCount == 2) {
+                        int count = 0;
+                        while(count != 2 && newP >= -1) {
+                            if(newPath[newP--] == '/')
+                                count++;
+                        }
+                        newP++;
+                        dotCount = 0;
+                    }
+                    else if(dotCount == 1) {
+                        dotCount = 0;
+                        newP -= 2;
+                    }
+                    else {
+                        newPath[newP] = newpath[oldP];
+                        dotCount = 0;
+                    }
+                }
+                else {
+                    newPath[newP] = newpath[oldP];
+                }
+                newP++;
+                oldP++;
+            }
+            if(newPath[newP-1] == '.' && newPath[newP-2] == '/') {
+                newP -= 2;
+            }
+            if(newPath[newP-1] == '.' && newPath[newP-2] == '.' && newPath[newP-3] == '/') {
+                int count = 0;
+                while(count != 2 && newP >= -1) {
+                    if(newPath[newP--] == '/')
+                        count++;
+                }
+                newP += 2;
+            }
+            if(newPath[newP-1]=='/')
+                newP--;
+            newPath[newP] = '\0';
+
 }
 
 /* When successful this function returns data in the following "out"-arguments:
@@ -83,7 +166,11 @@ int
 dir_namev(const char *pathname, size_t *namelen, const char **name,
           vnode_t *base, vnode_t **res_vnode)
 {
-        dbg(DBG_VFS,"VFS: Enter dir_namev(), look for path %s\n", pathname);
+        dbg_print("VFS: Enter dir_namev(), look for path %s\n", pathname);
+
+        convert_path(pathname);
+        pathname = newPath;
+        dbg_print("In dir_namev(), newpath=%s\n", pathname);
 
         KASSERT(NULL != pathname);
         KASSERT(NULL != namelen);
@@ -109,14 +196,14 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
                     if(i-last>STR_MAX)
                     {
                         /*vput(basic);*/
-                        dbg(DBG_VFS,"VFS: Leave dir_namev(), return error ENAMETOOLONG\n");
+                        dbg_print("VFS: Leave dir_namev(), return error ENAMETOOLONG\n");
                         return -ENAMETOOLONG;
                     }
                     *res_vnode=basic;
                     *namelen=i-last;
                     *name=&pathname[last];
                     vget(basic->vn_fs,basic->vn_vno);
-                    dbg(DBG_VFS,"VFS: Leave dir_namev(), find path %s\n", *name);
+                    dbg_print("VFS: Leave dir_namev(), find path %s\n", *name);
                     return 0;
                 }
             }
@@ -127,13 +214,14 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
             if(pathname[i]!='\0')
             {
                 if(i-last-1>STR_MAX) {
-                    dbg(DBG_VFS,"VFS: Leave dir_namev(), return error ENAMETOOLONG\n");
+                    dbg_print("VFS: Leave dir_namev(), return error ENAMETOOLONG\n");
                     return -ENAMETOOLONG;
                 }
+                dbg_print("VFS:In dir_namev(), before lookup(), look for %s, length=%d\n", pathname+last, i-last-1);
                 if((err=lookup(basic,pathname + last,i-last-1,res_vnode)))
                 {
                     /*vput(basic);*/
-                    dbg(DBG_VFS,"VFS: Leave dir_namev(), return lookup error, can't find path %s\n", pathname + last);
+                    dbg_print("VFS: Leave dir_namev(), return lookup error, can't find path %s\n", pathname + last);
                     return err;
                 }
                 dbg(DBG_VFS,"VFS: Parent path:%s\n",pathname+last);
@@ -147,7 +235,7 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
                 *res_vnode=basic;
                 namelen=0;
                 name=NULL;
-                dbg(DBG_VFS,"VFS: Leave dir_namev(), find /, special case\n");
+                dbg_print("VFS: Leave dir_namev(), find /, special case\n");
                 return 0;
             }
         }while(1);
@@ -166,6 +254,8 @@ int
 open_namev(const char *pathname, int flag, vnode_t **res_vnode, vnode_t *base)
 {
         dbg(DBG_VFS,"VFS: Enter open_namev()\n");
+
+        convert_path(pathname);
 
         size_t len;
         const char *name;
