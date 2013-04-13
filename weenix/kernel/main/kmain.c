@@ -8,7 +8,6 @@
  be content to put together your own testing system for threads and processes. Once you have implemented terminal drivers, you 
  can test here by setting up the kernel shell from test/kshell/.
 */
-
 #include "types.h"
 #include "globals.h"
 #include "kernel.h"
@@ -988,6 +987,87 @@ display_node_remove(const char *filename)
     dbg(DBG_USER, "\"%s\" is to be removed, ino: %d\n", filename, s.st_ino);
 }
 
+static int
+removeall(const char *dir)
+{
+        int ret, fd = -1;
+        dirent_t dirent;
+        struct stat status;
+    display_node_create(dir);
+        if ( (ret = do_chdir(dir)) != 0) 
+    {              
+        return ret;
+    }
+
+        ret = 1;
+        while (ret != 0) 
+        {
+                /*if ( (ret = do_getdent(".", &dirent)) != 0)
+                        goto error;
+                if (0 == ret)
+                        break;*/
+                if ( (ret = do_stat(dir, &status)) != 0)
+                        goto error;
+
+                if (S_ISDIR(status.st_mode)) 
+                {
+                        if ( (ret = removeall(dir)) != 0)
+                                goto error;
+                } 
+                else 
+                {
+                        if ( (ret = do_unlink(dir)) != 0)
+                                goto error;
+                }
+        }
+
+        if ( (ret = do_chdir("..")) != 0 )
+                return ret;
+    display_node_remove(dir);
+        if ( (ret = do_rmdir(dir)) != 0)
+                return ret;
+
+        /*do_close(fd);*/
+        return 0;
+
+error:
+        /*if (0 <= fd)
+                do_close(fd);*/
+
+        return ret;
+}
+
+static int
+getdents(int fd, struct dirent *dirp, unsigned int count)
+{
+        size_t numbytesread = 0;
+        int ret = 0;
+        dirent_t tempdirent;
+
+        if (count < sizeof(dirent_t)) 
+        {
+                return -EINVAL;;
+        }
+
+        while (numbytesread < count) 
+        {
+                if ((ret = do_getdent(fd, &tempdirent)) < 0) 
+                {
+                        return ret;
+                }
+                if (ret == 0) {
+                        return numbytesread;
+                }
+                memcpy(dirp, &tempdirent, sizeof(dirent_t));
+
+                KASSERT(ret == sizeof(dirent_t));
+
+                dirp++;
+                numbytesread += ret;
+        }
+        return numbytesread;
+}
+
 /****************************** Syscall Function Test *********************************/
 /* vfs test of do_stat */
 static void
@@ -1486,6 +1566,93 @@ vfstest_read(void)
 
 
 
+
+/*
+ * Terminates the testing environment
+ */
+static void
+vfstest_term(void)
+{
+    dbg(DBG_USER, "//----------------  VFSTEST_TERM Begins -----------------------------------//\n");   
+    int ret;        
+    if ( (ret = removeall(root_dir)) != 0 ) {
+                dbg(DBG_USER, "ERROR: could not remove testing root %s, #error: %d\n", root_dir, ret);
+                /*exit(-1);*/
+        }
+    else
+    {
+            dbg(DBG_USER, "Removed test root directory: ./%s\n", root_dir);
+    }
+}
+
+static void
+vfstest_getdents(void)
+{
+        int fd, ret;
+        dirent_t dirents[4];
+    dbg(DBG_USER, "//----------------  VFSTEST_GETDENTS Begins -----------------------------------//\n");
+        KASSERT( !do_mkdir("getdents")                  );
+        KASSERT( !do_chdir("getdents")                  );
+
+        /* getdents works */
+        KASSERT( !do_mkdir("dir01")                     );
+        KASSERT( !do_mkdir("dir01/1")                   );
+        create_file("dir01/2");
+
+        fd = do_open("dir01", O_RDONLY);
+        ret = getdents(fd, dirents, 4 * sizeof(dirent_t));
+    /*dbg(DBG_USER, "return value of getdents: %d; expected value: %d\n", ret, 4 * sizeof(dirent_t));*/
+        KASSERT( 4 * sizeof(dirent_t) == ret );
+
+        ret = getdents(fd, dirents, sizeof(dirent_t));
+        KASSERT( 0 == ret );
+
+        do_lseek(fd, 0, SEEK_SET);
+        test_fpos(fd, 0);
+        ret = getdents(fd, dirents, 2 * sizeof(dirent_t));
+        KASSERT( 2 * sizeof(dirent_t) == ret );
+        ret = getdents(fd, dirents, 2 * sizeof(dirent_t));
+        KASSERT( 2 * sizeof(dirent_t) == ret );
+        ret = getdents(fd, dirents, sizeof(dirent_t));
+        KASSERT( 0 == ret );
+        KASSERT( !do_close(fd)                      );
+
+        /* Cannot call getdents on regular file */
+        create_file("file01");
+        fd = do_open("file01", O_RDONLY);
+        KASSERT( getdents(fd, dirents, 4 * sizeof(dirent_t)) == -ENOTDIR );
+        KASSERT( !do_close(fd)                      );
+
+        KASSERT( !do_chdir(".."));
+}
+
+/* These operations should run for a long time and halt when the file
+ * descriptor overflows. */
+static void
+vfstest_infinite(void)
+{
+        int res, fd;
+        char buf[4096];
+
+        res = 1;
+        fd = do_open("/dev/null", O_WRONLY);
+        while (0 < res) 
+        {
+                res = do_write(fd, buf, sizeof(buf));
+        }
+        KASSERT( !do_close(fd) );
+
+        res = 1;
+        fd = do_open("/dev/zero", O_RDONLY);
+        while (0 < res) 
+        {
+                res = do_read(fd, buf, sizeof(buf));
+        }
+        KASSERT( !do_close(fd) );
+}
+
+
+
 /****************************** Main *********************************/
 static void *
 vfs_test() 
@@ -1496,10 +1663,14 @@ vfs_test()
     /*vfstest_stat();
     vfstest_mkdir();
     vfstest_chdir();*/
-    vfstest_paths();
+    /*vfstest_paths();*/
     /*vfstest_fd();*/
     /*vfstest_open();*/
     /*vfstest_read();*/
+    /*vfstest_term();*/
+    /*vfstest_getdents();*/
+
+    vfstest_infinite();
     return 0;
 }
 
