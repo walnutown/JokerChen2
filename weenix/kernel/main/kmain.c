@@ -885,18 +885,19 @@ static char* root_dir;
 static void
 create_file(const char *filename)      
 {                                                                
-    dbg(DBG_VFS, "Enter creat_file().\n");
-    int fd;                                                                     
-    if (( fd = do_open(filename, O_RDONLY|O_CREAT )) )
+    dbg_print("Enter creat_file().\n");
+    int fd = do_open(filename, O_RDONLY|O_CREAT );
+    /*dbg_print("Created file successfully and leave creat_file(). fd=%d\n", fd);*/            
+    if (fd >=0 && fd < NFILES)
     {             
             int ret;
             if ( (ret = do_close(fd)) == 0 )
-                dbg(DBG_DISK, "Close the created file successfully and leave creat_file().\n");
+                dbg_print("Close the created file successfully and leave creat_file().\n");
             else
-                dbg(DBG_DISK, "Failed to close the created file  and leave creat_file(), error: %d\n", ret);                                                
+                dbg_print("Failed to close the created file  and leave creat_file(), error: %d\n", ret);                                                
     }
-
-    dbg(DBG_DISK, "Failed to create file  and leave creat_file(), error: %d\n", fd);                                                                             
+    else
+        dbg_print("Failed to create file  and leave creat_file(), error: %d\n", fd);                                                                         
 }
 
 static void
@@ -1139,22 +1140,20 @@ vfstest_paths(void)
         struct stat s;
 
         KASSERT( !do_mkdir(PATHS_TEST_DIR)      );
-    display_node_create(PATHS_TEST_DIR);
+        display_node_create(PATHS_TEST_DIR);
         KASSERT( !do_chdir(PATHS_TEST_DIR)      );
 
         KASSERT( do_stat("", &s) == -EINVAL     );
 
-        /*paths_equal(".", ".");
-        paths_equal("1/2/3", "1/2/3");
+        paths_equal(".", ".");
+        /*paths_equal("1/2/3", "1/2/3");
         paths_equal("4/5/6", "4/5/6");*/
 
-        /* root directory */
-        paths_equal("/", "/");
+        /*paths_equal("/", "/");
         paths_equal("/", "/..");
         paths_equal("/", "/../");
         paths_equal("/", "/../.");
 
-        /* . and .. */
         paths_equal(".", "./.");
         paths_equal(".", "1/..");
         paths_equal(".", "1/../");
@@ -1167,7 +1166,6 @@ vfstest_paths(void)
         paths_equal(".", "1/2/3/../../../4/5/6/../../..");
         paths_equal(".", "1/./2/./3/./.././.././.././4/./5/./6/./.././.././..");
 
-        /* extra slashes */
         paths_equal("1/2/3", "1/2/3/");
         paths_equal("1/2/3", "1//2/3");
         paths_equal("1/2/3", "1/2//3");
@@ -1175,7 +1173,6 @@ vfstest_paths(void)
         paths_equal("1/2/3", "1//2//3/");
         paths_equal("1/2/3", "1///2///3///");
 
-        /* strange names */
         paths_equal("-", "-");
         paths_equal(" ", " ");
         paths_equal("\\", "\\");
@@ -1183,7 +1180,6 @@ vfstest_paths(void)
 
         struct stat st;
 
-        /* error cases */
         KASSERT( do_stat("asdf", &st)       == -ENOENT  );
         KASSERT( do_stat("1/asdf", &st)     == -ENOENT  );
         KASSERT( do_stat("1/../asdf", &st)  == -ENOENT  );
@@ -1193,7 +1189,7 @@ vfstest_paths(void)
         KASSERT( do_open("1/file/other", O_RDONLY) == -ENOTDIR);
         KASSERT( do_open("1/file/other", O_RDONLY | O_CREAT) == -ENOTDIR);
 
-        KASSERT( !do_chdir(".."));
+        KASSERT( !do_chdir(".."));*/
 }
 
 static void
@@ -1207,19 +1203,82 @@ vfstest_fd(void)
         char buf[FD_BUFSIZE];
         struct dirent d;
 
+        KASSERT( !do_mkdir("fd")    );
+        KASSERT( !do_chdir("fd")    );
+
+        KASSERT( do_read(BAD_FD, buf, FD_BUFSIZE)   == -EBADF   );
+        KASSERT( do_read(HUGE_FD, buf, FD_BUFSIZE)  == -EBADF   );
+        KASSERT( do_read(-1, buf, FD_BUFSIZE)       == -EBADF   );
+
+        KASSERT( do_write(BAD_FD, buf, FD_BUFSIZE)  == -EBADF   );
+        KASSERT( do_write(HUGE_FD, buf, FD_BUFSIZE) == -EBADF   );
+        KASSERT( do_write(-1, buf, FD_BUFSIZE)      == -EBADF   );
+
+        KASSERT( do_close(BAD_FD)   == -EBADF   );
+        KASSERT( do_close(HUGE_FD)  == -EBADF   );
+        KASSERT( do_close(-1)       == -EBADF   );
+
+        KASSERT( do_lseek(BAD_FD, 0, SEEK_SET)      == -EBADF   );
+        KASSERT( do_lseek(HUGE_FD, 0, SEEK_SET)     == -EBADF   );
+        KASSERT( do_lseek(-1, 0, SEEK_SET)          == -EBADF   );
+
+        KASSERT( do_getdent(BAD_FD, &d)             == -EBADF   );
+        KASSERT( do_getdent(HUGE_FD, &d)            == -EBADF   );
+        KASSERT( do_getdent(-1, &d)                 == -EBADF   );
+
+        KASSERT( do_dup(BAD_FD)         == -EBADF   );
+        KASSERT( do_dup(HUGE_FD)        == -EBADF   );
+        KASSERT( do_dup(-1)             == -EBADF   );
+
+        KASSERT( do_dup2(BAD_FD, 10)    == -EBADF   );
+        KASSERT( do_dup2(HUGE_FD, 10)   == -EBADF   );
+        KASSERT( do_dup2(-1, 10)        == -EBADF   );
+
+        KASSERT( do_dup2(0, HUGE_FD)    == -EBADF   );
+        KASSERT( do_dup2(0, -1)         == -EBADF   );
+
+        KASSERT( do_dup2(BAD_FD, BAD_FD)    == -EBADF   );
+        KASSERT( do_dup2(HUGE_FD, HUGE_FD)  == -EBADF   );
+        KASSERT( do_dup2(-1, -1)            == -EBADF   );
+
+
         create_file("file01");
-
-        dbg_print("Create File\n");
-
         fd1 = do_open("file01", O_RDWR);
-
-        dbg_print("Opern fd1=%d\n", fd1);
-
         fd2 = do_dup(fd1);
-
-        dbg_print("do_dup fd2=%d\n", fd2);
-
         KASSERT( fd1 < fd2);
+        do_write(fd2, "hello", 5);
+        test_fpos(fd1, 5); test_fpos(fd2, 5);
+        do_lseek(fd2, 0, SEEK_SET);
+        test_fpos(fd1, 0); test_fpos(fd2, 0);
+        read_fd(fd1, 5, "hello"); 
+        test_fpos(fd1, 5); test_fpos(fd2, 5);
+        KASSERT( !do_close(fd2) );
+
+
+        fd2 = do_dup2(fd1, 10);
+        KASSERT( 10 == fd2  );
+
+        test_fpos(fd1, 5); test_fpos(fd2, 5);
+        do_lseek(fd2, 0, SEEK_SET);
+        test_fpos(fd1, 0); test_fpos(fd2, 0);
+        KASSERT( !do_close(fd2) );
+
+        fd2 = do_dup2(fd1, fd1);
+        KASSERT( fd1 == fd2 );
+
+        KASSERT( !do_close(fd2) );
+
+
+        int fd3;
+        create_file("file02");
+        fd3 = do_open("file02", O_RDWR);
+        fd2 = do_dup2(fd1, fd3);
+        KASSERT( fd2 == fd3 );
+        test_fpos(fd1, 0); test_fpos(fd2, 0);
+        do_lseek(fd2, 5, SEEK_SET);
+        test_fpos(fd1, 5); test_fpos(fd2, 5);
+        
+        KASSERT( !do_chdir("..")    );
 }
 
 
@@ -1322,35 +1381,35 @@ static void
 vfstest_read(void)
 {
 #define READ_BUFSIZE 256
-    dbg(DBG_USER, "//---------------- VFSTEST_READ Begins---------------------------------------------//\n");
-        int fd, ret;
-        char buf[READ_BUFSIZE];
-        struct stat s;
+    int fd, ret;
+    char buf[READ_BUFSIZE];
+    struct stat s;
+   dbg(DBG_USER, "//---------------- VFSTEST_READ Begins---------------------------------------------//\n");
         KASSERT( !do_mkdir("read")                          );
     display_node_create("read");
         KASSERT( !do_chdir("read")                          );
 
-        /* Can read and write to a file */
     dbg(DBG_USER, "//---------------- FILE: \"file01\" : Can read and write to a file ----------//\n");
         fd  = do_open("file01", O_RDWR | O_CREAT);
         ret = do_write(fd, "hello", 5);
+        dbg_print("do_write(), ret=%d\n", ret);
         KASSERT(    5 == ret                                );
         ret = do_lseek(fd, 0, SEEK_SET);
         KASSERT(    0 == ret                                );
         read_fd(fd, READ_BUFSIZE, "hello");
         KASSERT( !do_close(fd)                              );
 
-        /* cannot read from a directory */
+
     dbg(DBG_USER, "//---------------- DIR: \"dir01\" : Cannot read from a directory ----------//\n");
         KASSERT( !do_mkdir("dir01")                         );
         fd = do_open("dir01", O_RDONLY);
-        KASSERT( do_read(fd, buf, READ_BUFSIZE)  == -EBADF  );
+        KASSERT( do_read(fd, buf, READ_BUFSIZE)  == -EISDIR  );
         KASSERT( !do_close(fd)                              );
 
-        /* Can seek to beginning, middle, and end of file */
+
     dbg(DBG_USER, "//---------------- FILE: \"file02\": Can seek to beginning, middle, and end of file ----------//\n");
         fd = do_open("file02", O_RDWR | O_CREAT);
-        KASSERT( !do_write(fd, "hello", 5)                  );
+        KASSERT( do_write(fd, "hello", 5) == 5               );
 
 
 
@@ -1381,8 +1440,8 @@ vfstest_read(void)
         KASSERT( do_lseek(fd, 0, SEEK_SET + SEEK_CUR + SEEK_END) == -EINVAL );
         KASSERT( !do_close(fd)                  );
 
-        /* O_APPEND works properly */
-    dbg(DBG_USER, "//---------------- FILE: \"file03\":  O_APPEND works properly ----------------------//\n");
+
+   dbg(DBG_USER, "//---------------- FILE: \"file03\":  O_APPEND works properly ----------------------//\n");
         create_file("file03");
         fd = do_open("file03", O_RDWR);
         test_fpos(fd, 0);
@@ -1407,7 +1466,7 @@ vfstest_read(void)
         read_fd(fd, 15, "hellohelloagain");
         KASSERT( !do_close(fd)  );
 
-        /* seek and write beyond end of file */
+
     dbg(DBG_USER, "//---------------- FILE: \"file04\":  seek and write beyond end of file ----------------------//\n");
         create_file("file04");
         fd = do_open("file04", O_RDWR);
@@ -1431,16 +1490,16 @@ vfstest_read(void)
 static void *
 vfs_test() 
 {   
-        /* begin vfs test*/
-        vfstest_start();
-        do_chdir(root_dir);
-        /*vfstest_stat(); */
-    /*vfstest_mkdir();*/
-    /* vfstest_chdir(); */
-        /*vfstest_paths();*/
-        /*vfstest_fd();*/
-        /*vfstest_open();*/
-    vfstest_read();
+    /* begin vfs test*/
+    vfstest_start();
+    do_chdir(root_dir);
+    /*vfstest_stat();
+    vfstest_mkdir();
+    vfstest_chdir();*/
+    vfstest_paths();
+    /*vfstest_fd();*/
+    /*vfstest_open();*/
+    /*vfstest_read();*/
     return 0;
 }
 

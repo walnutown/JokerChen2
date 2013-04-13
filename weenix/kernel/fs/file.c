@@ -60,9 +60,15 @@ fget(int fd)
                 if (fd < 0 || fd >= NFILES)
                         return NULL;
                 f = curproc->p_files[fd];
+                    if(f == NULL) {
+                        dbg_print("In fget(%d), file is NULL\n", fd);
+                    }
+                    else {
+                        dbg_print("In fget(%d), file is not NULL, f_refcount=%d\n", fd, f->f_refcount);
+                        dbg_print("In fget(%d), f->vn_vno=%d, f->f_vnode->vn_ref=%d\n", fd, f->f_vnode->vn_vno, f->f_vnode->vn_refcount);
+                    }
         }
         if (f) fref(f);
-
         return f;
 }
 

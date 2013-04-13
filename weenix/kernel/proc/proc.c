@@ -180,20 +180,27 @@ proc_cleanup(int status)
     KASSERT(NULL != curproc->p_pproc); 
 
     KASSERT(curproc->p_pid!=PID_IDLE);
+    dbg_print("Enter proc_cleanup()\n");
 
     if(curproc->p_state!=PROC_DEAD)
     {
     if(curproc->p_pid!=PID_IDLE)
     {
-        vput(curproc->p_cwd);
-
+        dbg_print("Enter clean files...\n");
         int fd = 0;
         for(fd=0;fd<NFILES;fd++)
         {
-            if(curproc->p_files[fd]!=NULL)
+            if(curproc->p_files[fd]!=NULL) {
+                dbg_print("Enter close fd=%d\n", fd);
                 do_close(fd);
-
+            }
         }
+        dbg_print("Clean up all files\n");
+        if(curproc->p_cwd->vn_refcount!=0)
+        {
+            vput(curproc->p_cwd);
+        }
+        dbg_print("Clean up curproc->p_cwd sucess\n");
         /*wake up the waiting parent*/
         if(curproc->p_pproc->p_wait.tq_size!=0)
         {

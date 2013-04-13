@@ -62,29 +62,23 @@ do_read(int fd, void *buf, size_t nbytes)
                 dbg(DBG_VFS,"VFS: Leave do_read()\n");
                 return -EISDIR;
         }
-        int bytes=file->f_vnode->vn_ops->read(file->f_vnode,file->f_pos,buf,nbytes);
-        if(nbytes!=0)
+        if(nbytes==0)
         {
-                if(bytes==0)
-                {
-                        bytes=file->f_vnode->vn_len-file->f_pos;
-                        do_lseek(fd,0,SEEK_END);
-                }
-                else
-                {
-                        do_lseek(fd,bytes,SEEK_CUR);        
-                }
-                fput(file);
-                dbg(DBG_VFS,"VFS: Leave do_read()\n");
-                return bytes;
+            fput(file);
+            return 0;
+        }
+        unsigned int bytes=file->f_vnode->vn_ops->read(file->f_vnode,file->f_pos,buf,nbytes);
+        if(bytes==nbytes)
+        {
+            do_lseek(fd,bytes,SEEK_CUR); 
         }
         else
         {
-                fput(file);
-                dbg(DBG_VFS,"VFS: Leave do_read()\n");
-                return nbytes;
+            do_lseek(fd,0,SEEK_END);
         }
-}
+        fput(file);
+        return bytes;
+}  
 
 /* Very similar to do_read.  Check f_mode to be sure the file is writable.  If
  * f_mode & FMODE_APPEND, do_lseek() to the end of the file, call the write
@@ -99,23 +93,27 @@ do_write(int fd, const void *buf, size_t nbytes)
 {
         if(fd < 0 || fd > NFILES)
             return -EBADF;
-        dbg(DBG_VFS,"VFS: Enter do_write()\n");
+        dbg_print("VFS: Enter do_write(), fd=%d\n", fd);
         file_t* file=fget(fd);
         if(file==NULL)
         {
-                dbg(DBG_VFS,"VFS: Leave do_write()\n");
+                dbg(DBG_VFS,"VFS: Leave do_write(), file=NULL\n");
                 return -EBADF;
         }
+        dbg_print("VFS: In do_write(), f_mode=%x\n", file->f_mode);
+        dbg_print("VFS: In do_write(), file->f_mode&FMODE_WRITE=%x\n", file->f_mode&FMODE_WRITE);
+        dbg_print("VFS: In do_write(), file->f_mode&FMODE_APPEND=%x\n", file->f_mode&FMODE_APPEND);
+
         if(!(file->f_mode&FMODE_WRITE)&&!(file->f_mode&FMODE_APPEND))
         {
                 fput(file);
-                dbg(DBG_VFS,"VFS: Leave do_write()\n");
+                dbg(DBG_VFS,"VFS: Leave do_write(), !(file->f_mode&FMODE_WRITE)&&!(file->f_mode&FMODE_APPEND)\n");
                 return -EBADF;
         }
         if(S_ISDIR(file->f_vnode->vn_mode)||file->f_vnode->vn_ops->write==NULL)
         {
                 fput(file);
-                dbg(DBG_VFS,"VFS: Leave do_write()\n");
+                dbg(DBG_VFS,"VFS: Leave do_write(), S_ISDIR(file->f_vnode->vn_mode)||file->f_vnode->vn_ops->write==NULL\n");
                 return -EISDIR;
         }
 
@@ -125,14 +123,15 @@ do_write(int fd, const void *buf, size_t nbytes)
                 do_lseek(fd,0,SEEK_END);
                 bytes=file->f_vnode->vn_ops->write(file->f_vnode,file->f_pos,buf,nbytes);
                 do_lseek(fd,0,SEEK_END);
+                dbg(DBG_VFS,"VFS: Leave do_write(), mode=APPEND\n");
         }
         else if(file->f_mode&FMODE_WRITE)
         {
                 bytes=file->f_vnode->vn_ops->write(file->f_vnode,file->f_pos,buf,nbytes);  
-                do_lseek(fd,bytes,SEEK_CUR);     
+                do_lseek(fd,bytes,SEEK_CUR);   
+                dbg(DBG_VFS,"VFS: Leave do_write(), mode=WRITE\n");  
         }
         fput(file);
-        dbg(DBG_VFS,"VFS: Leave do_write()\n");
         return bytes;
 }
 
@@ -155,13 +154,14 @@ do_close(int fd)
                 dbg_print("VFS: Leave do_close(), fd=%d\n", fd);
                 return -EBADF;
         }
-       
-        while(file->f_refcount!=0)
+       fput(file);
+        /*while(file->f_refcount!=0)*/
         {
                 fput(file);
         }
         curproc->p_files[fd]=NULL;
-        dbg_print("VFS: Leave do_close(), fd=%d\n", fd);
+        dbg_print("VFS: Leave do_close(), fd=%d, f->f_ref=%d\n", fd, file->f_refcount);
+        dbg_print("f->vno=%d, f->vno->v_ref=%d\n", file->f_vnode->vn_vno, file->f_vnode->vn_refcount);
         return 0;
 }
 
@@ -189,14 +189,13 @@ do_dup(int fd)
 
         file_t* file=fget(fd);
 
-        dbg_print("VFS: Enter do_dup(), fget(%d), vnode %d's reference count %d\n", 
-            fd, file->f_vnode->vn_vno, file->f_vnode->vn_refcount);
-
         if(file==NULL)
         {
                 dbg(DBG_VFS,"VFS: Leave do_dup()\n");
                 return -EBADF;
         }
+        dbg_print("VFS: Enter do_dup(), fget(%d), vnode %d's reference count %d\n", 
+            fd, file->f_vnode->vn_vno, file->f_vnode->vn_refcount);
         int new_fd=get_empty_fd(curproc);
         if(new_fd==-EMFILE)
         {
@@ -205,7 +204,7 @@ do_dup(int fd)
                 return -EMFILE;
         }
         curproc->p_files[new_fd]=file;
-        vget(file->f_vnode->vn_fs,file->f_vnode->vn_vno);
+        /*vget(file->f_vnode->vn_fs,file->f_vnode->vn_vno);*/
         dbg(DBG_VFS,"VFS: Leave do_dup()\n");
 
         dbg_print("VFS: In do_dup(), fd=%d, vnode %d's reference count %d\n", 
@@ -234,27 +233,35 @@ do_dup2(int ofd, int nfd)
 {
         if(ofd < 0 || ofd > NFILES)
             return -EBADF;
-        dbg(DBG_VFS,"VFS: Enter do_dup2()\n");
+        dbg_print("VFS: Enter do_dup2()\n");
         file_t* file=fget(ofd);
         if(file==NULL)
         {
-                dbg(DBG_VFS,"VFS: Leave do_dup2()\n");
+                dbg_print("VFS: Leave do_dup2()\n");
                 return -EBADF;
         }
         if(nfd>NFILES||nfd<0)
         {
                 fput(file);
-                dbg(DBG_VFS,"VFS: Leave do_dup2()\n");
+                dbg_print("VFS: Leave do_dup2()\n");
                 return -EBADF;
         }
         if(curproc->p_files[nfd]!=NULL&&nfd!=ofd)
         {
                 do_close(nfd);
         }
+        if(nfd==ofd)
+        {
+            fput(file);
+            return nfd;
+        }
         curproc->p_files[nfd]=file;
-        vget(file->f_vnode->vn_fs,file->f_vnode->vn_vno);
-
-        dbg(DBG_VFS,"VFS: Leave do_dup2()\n");
+        /*vget(file->f_vnode->vn_fs,file->f_vnode->vn_vno);*/
+        file_t* nfile=fget(nfd);
+        fput(nfile);
+        dbg_print("VFS: Leave do_dup2(), nfd=%d, vnode %d's reference count %d\n", 
+            nfd, nfile->f_vnode->vn_vno, nfile->f_vnode->vn_refcount);
+        dbg_print("VFS: Leave do_dup2()\n");
         return nfd;
 }
 
@@ -747,11 +754,6 @@ do_lseek(int fd, int offset, int whence)
                 dbg(DBG_VFS,"VFS: Leave do_lseek()\n");
                 return -EINVAL;
         }
-        else if(offset<0)
-        {
-                dbg(DBG_VFS,"VFS: Leave do_lseek()\n");
-                return -EINVAL;
-        }
 
         file_t *file=fget(fd);
         if(file==NULL)
@@ -762,21 +764,46 @@ do_lseek(int fd, int offset, int whence)
 
         if(whence==SEEK_SET)
         {
+            if(offset<0)
+            {
+                fput(file);
+                return -EINVAL;
+            }
+            else
+            {
                 file->f_pos=offset;
+
+            }
         }
         else if(whence==SEEK_CUR)
         {
+            if(file->f_pos+offset<0)
+            {
+                fput(file);
+                return -EINVAL;
+            }
+            else
+            {
                 file->f_pos=file->f_pos+offset;
+            }
         }
         else if(whence==SEEK_END)
         {
+            if(file->f_vnode->vn_len+offset<0)
+            {
+                fput(file);
+                return -EINVAL;
+            }
+            else
+            {
                 file->f_pos=file->f_vnode->vn_len+offset;
+            }    
         }
-        int ref=file->f_pos;
         fput(file);
         dbg(DBG_VFS,"VFS: Leave do_lseek()\n");
-        return ref;
+        return file->f_pos;
 }
+
 
 /*
  * Find the vnode associated with the path, and call the stat() vnode operation.

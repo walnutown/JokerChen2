@@ -107,7 +107,7 @@ do_open(const char *filename, int oflags)
     curproc->p_files[fd] = f;
     
     /*-- 4. Set file_t->f_mode to OR of FMODE_(READ|WRITE|APPEND) based on oflags --*/
-    switch(oflags)
+    switch(oflags&0x40f)
     {
         case O_RDONLY:
             f->f_mode = FMODE_READ;
@@ -130,6 +130,9 @@ do_open(const char *filename, int oflags)
         default:
             break;      
     }
+
+    dbg_print("In do_open(), oflags=%x\n", oflags);
+    dbg_print("In do_open(), f->f_mode=%x\n", f->f_mode);
     
     /* 5. Use open_namev() to get the vnode for the file_t; 
      * if fails, remove the fd from curproc, fput the file_t
@@ -142,7 +145,6 @@ do_open(const char *filename, int oflags)
     {
         create=1;
     }
-    dbg(DBG_DISK,"VFS: In do_open(), create=%d\n", create);
     if((error = open_namev(filename, create, &res_vnode, NULL)) != 0 )  
     {
         curproc->p_files[fd] = NULL;
@@ -186,6 +188,8 @@ do_open(const char *filename, int oflags)
 
     /*-- 6. Fill in the fields of the file_t --*/
     f->f_vnode = res_vnode;
+    dbg_print("VFS: In do_open() filename=%s, f->ref=%d, fd=%d,\nf->vno=%d, f->vno->ref=%d\n", 
+        filename, f->f_refcount, fd, f->f_vnode->vn_vno, f->f_vnode->vn_refcount);
     f->f_pos = 0;
 
     /* check O_TRUNC:
