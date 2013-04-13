@@ -14,4 +14,19 @@ when you assign different mode to it, different test method get executed, the ex
 
 #define KSHELL_TEST                 4     /*test mode for kshell, you can type in command like help in kshell*/
 #define VFS_TEST                    10    /*main test code for VFS*/
+
+in VFS_TEST, we including following test cases:
+
+ 	vfstest_start();
+    vfstest_stat();
+    vfstest_mkdir();
+    vfstest_chdir();
+    vfstest_paths();
+    vfstest_fd();
+    vfstest_open();
+    vfstest_read();
+    vfstest_getdents();
+
+    /*vfstest_infinite();*/ //this is a special test case, this lead to halt 
+
 Note:  you may want to turn the DRIVER to 1 and  in config.mk if you are not using our config.mk
