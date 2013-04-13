@@ -445,9 +445,11 @@ special_file_read(vnode_t *file, off_t offset, void *buf, size_t count)
 {
         KASSERT(file);
         KASSERT((S_ISCHR(file->vn_mode) || S_ISBLK(file->vn_mode)));
+        dbg(DBG_VFS,"VFS: Enter special_file_read()\n");
         
         if(S_ISBLK(file->vn_mode))
         {
+            dbg(DBG_VFS,"VFS: Leave special_file_read(), throw ENOTSUP\n");
             return -ENOTSUP;
         }
         int bytes=0;
@@ -457,6 +459,7 @@ special_file_read(vnode_t *file, off_t offset, void *buf, size_t count)
             file->vn_cdev=bytedev_lookup(file->vn_devid);
             bytes=file->vn_cdev->cd_ops->read(file->vn_cdev,offset,buf,count);
         }
+        dbg(DBG_VFS,"VFS: Leave special_file_read(), success, return value %d \n",bytes);
         return bytes;
 }
 
@@ -471,8 +474,10 @@ special_file_write(vnode_t *file, off_t offset, const void *buf, size_t count)
 {
         KASSERT(file);
         KASSERT((S_ISCHR(file->vn_mode) || S_ISBLK(file->vn_mode)));
+        dbg(DBG_VFS,"VFS: Enter special_file_write()\n");
         if(S_ISBLK(file->vn_mode))
         {
+            dbg(DBG_VFS,"VFS: Leave special_file_write(), throw ENOTSUP\n");
             return -ENOTSUP;
         }
         int bytes=0;
@@ -482,6 +487,7 @@ special_file_write(vnode_t *file, off_t offset, const void *buf, size_t count)
             file->vn_cdev=bytedev_lookup(file->vn_devid);
             bytes=file->vn_cdev->cd_ops->write(file->vn_cdev,offset,buf,count);
         }
+        dbg(DBG_VFS,"VFS: Leave special_file_write(), success, return value %d \n",bytes);
         return bytes;
 }
 
